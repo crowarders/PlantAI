@@ -199,7 +199,7 @@ export default function PlantAI(){
       setSoilProgress(attempt===1?"AI хөрсийг шинжилж байна...":"Дахин оролдож байна ("+attempt+"/3)...");
       try{
         const extra=attempt>1?"\nЗӨВХӨН JSON. Markdown бичихгүй!":"";
-        const resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:3000,system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
+        const resp=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:3000,system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
         if(!resp.ok){fallback="Сервер алдаа: "+resp.status;continue;}
         const data=await resp.json();
         if(data.error){fallback=data.error.message||"API алдаа";continue;}
@@ -367,7 +367,7 @@ JSON БҮТЭЦ:
       setProgress(attempt===1?"AI зургийг шинжилж байна...":attempt===2?"Дахин оролдож байна ("+attempt+"/"+maxAttempts+")...":"Сүүлийн оролдлого...");
       try{
         const extraNote=attempt>1?"\n\nАнхааруулга: Зөвхөн JSON объект. { } хаалтаар эхэлж төгсөнө. Markdown, тайлбар бичихгүй. treatment болон prevention заавал бөглөнө!":"";
-        const resp=await fetch("https://api.anthropic.com/v1/messages",{
+        const resp=await fetch("/api/chat",{
           method:"POST",
           headers:{"Content-Type":"application/json"},
           body:JSON.stringify({
