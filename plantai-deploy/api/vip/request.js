@@ -1,6 +1,7 @@
 import { readUsers, writeUsers, publicUser } from "../_lib/users.js";
 import { getSessionEmail } from "../_lib/auth.js";
 import { priceFor, bankInfo } from "../_lib/pricing.js";
+import { notifyAdmin } from "../_lib/notify.js";
 
 const PLANS = ["premium", "vip"];
 const BILLINGS = ["month", "year", "life"];
@@ -39,6 +40,14 @@ export default async function handler(req, res) {
   };
   users[email] = record;
   await writeUsers(users);
+
+  const planL = plan === "vip" ? "VIP" : "Premium";
+  const billingL = { month: "сар", year: "жил", life: "насан турш" }[billing];
+  await notifyAdmin(
+    "💰 Шинэ VIP хүсэлт",
+    record.name + " (" + email + ") — " + planL + " · " + billingL + " · " + price.toLocaleString("en-US") + "₮\n" +
+      "Батлах: " + "https://plant-ai-five.vercel.app/?admin=1"
+  );
 
   return res.status(200).json({ user: publicUser(record), price, bank: bankInfo() });
 }
