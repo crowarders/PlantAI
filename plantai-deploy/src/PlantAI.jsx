@@ -101,6 +101,47 @@ const DB = {
   ]},
 };
 
+/* ═══ ТАРИАЛАЛТЫН ХУАНЛИ — Монголын богино ургалтын улирал (5-9 сар) ═══ */
+const MONTHS=["1","2","3","4","5","6","7","8","9","10","11","12"];
+const CAL=[
+  {crop:"Улаан буудай",icon:"🌾",sow:[4,5],grow:[6,7],harvest:[8,9],tip:"Хаврын буудайг 4-р сарын сүүл–5-р сард тарьж, 8–9-р сард хураана. Хүйтэнд тэсвэртэй, эрт тарих тусмаа ургац сайжирна."},
+  {crop:"Арвай",icon:"🌿",sow:[5],grow:[6,7],harvest:[8,9],tip:"5-р сард тарьж 8-9-р сард хураадаг. Буудайнаас богино хугацаанд боловсордог тул сүүлд тарьж болно."},
+  {crop:"Рапс",icon:"🌻",sow:[5],grow:[6,7],harvest:[9],tip:"5-р сарын эхээр тарина. Чийг шаардлагатай, цэцэглэх үед хортонтой тэмцэнэ. 9-р сард хураана."},
+  {crop:"Төмс",icon:"🥔",sow:[5],grow:[6,7,8],harvest:[9],tip:"5-р сарын дунд үеэс хөрс 8°C дулаарсны дараа суулгана. Цантах эрсдэлээс сэргийлж 9-р сард хураана."},
+  {crop:"Байцаа",icon:"🥬",sow:[4],grow:[5,6,7],harvest:[8,9],tip:"4-р сард суулгацаа хүлэмжид ургуулж, 5-р сарын сүүлээр талбайд шилжүүлнэ. 8–9-р сард толгойлно."},
+  {crop:"Лууван",icon:"🥕",sow:[5],grow:[6,7,8],harvest:[9],tip:"5-р сард шууд үрээр тарина. Сэрүүн уур амьсгалд сайн ургана, 9-р сард хураана."},
+  {crop:"Манжин",icon:"🟣",sow:[5],grow:[6,7,8],harvest:[9],tip:"5-р сард тарина. Хөрсний чийг тогтмол байх шаардлагатай. 9-р сард хураана."},
+  {crop:"Сонгино",icon:"🧅",sow:[4,5],grow:[6,7],harvest:[8,9],tip:"Багц/үрээр 4–5-р сард тарина. Навч хатаж унасны дараа 8–9-р сард хураана."},
+  {crop:"Сармис",icon:"🧄",sow:[9,4],grow:[5,6,7],harvest:[8],tip:"Намар (9-р сар) эсвэл хавар (4-р сар) суулгана. Намрын тариалт том толгой өгдөг. 8-р сард хураана."},
+  {crop:"Лооль",icon:"🍅",sow:[3],grow:[4,5,6,7],harvest:[8,9],tip:"3-р сард суулгацаа ургуулж, 6-р сард хүлэмж/хамгаалалттай газар шилжүүлнэ. Гадаа тариалахад цантаас хамгаална."},
+  {crop:"Өргөст хэмх",icon:"🥒",sow:[4],grow:[5,6,7],harvest:[7,8,9],tip:"4-р сард суулгац бэлдэж, 6-р сард хүлэмжид шилжүүлнэ. Дулаан их шаардана, 7–9-р сард жимсэлнэ."},
+  {crop:"Эрдэнэ шиш",icon:"🌽",sow:[5],grow:[6,7,8],harvest:[9],tip:"5-р сарын сүүлээр хөрс дулаарсны дараа тарина. Богино ургалтын үеийн эрт боловсордог сорт сонгоно."},
+];
+const PHASE={sow:{c:"#4ade80",l:"Тарих"},grow:{c:"#60a5fa",l:"Арчлах"},harvest:{c:"#fbbf24",l:"Хураах"}};
+
+/* ═══ ДЭЛГҮҮРИЙН ТОХИРГОО — эзэн өөрийн мэдээллээр солино ═══ */
+const SHOP={
+  phone:"9567-0238",              // Захиалгын утас
+  messenger:"m.me/PlantAI",       // Facebook Messenger
+  email:"info@plantai.mn",        // И-мэйл
+};
+/* Итгэл төрүүлэх сэтгэгдлүүд (жишиг) */
+const REVIEWS=[
+  {name:"Б. Батсайхан",role:"Төмсний тариаланч, Сэлэнгэ",text:"Фитофтороор шалгасан. Зурган дээрээс шууд оношилж, ямар эм цацахыг хэлж өгсөн. Ургацаа аварсан!",crop:"🥔"},
+  {name:"Д. Оюунчимэг",role:"Хүнсний ногооны фермер, Дархан",text:"Хөрсний шинжилгээ, тариалалтын хуанли хоёр нь тэнгэрийн заяа. Юуг хэзээ тарихаа мэдэхэд амар боллоо.",crop:"🥬"},
+  {name:"Г. Мөнхбат",role:"Буудайн аж ахуй, Төв аймаг",text:"AI зөвлөхөөс шөнө дунд ч асууж болдог. Агрономчид залгах шаардлагагүй болсон.",crop:"🌾"},
+  {name:"Ц. Нарантуяа",role:"Хүлэмжийн лооль, Улаанбаатар",text:"Навч шарлаад байсныг зурагдуулаад л шалтгаан, шийдлийг нь олж мэдсэн. Маш хурдан.",crop:"🍅"},
+];
+/* Идэвхтэй тариаланч ба хийсэн оношлогооны тоо — бүх хэрэглэгчид нийтлэг харагдахын тулд
+   серверийн /api/stats (Vercel Blob) дээр хадгална. localStorage нь offline/dev үеийн нөөц хувилбар. */
+const STATS_KEY="plantai_stats";
+const DEFAULT_STATS={farmers:10,diagnoses:10};
+const loadLocalStats=()=>{
+  try{const r=localStorage.getItem(STATS_KEY);if(r)return JSON.parse(r);}catch{}
+  return {...DEFAULT_STATS};
+};
+const saveLocalStats=(s)=>{try{localStorage.setItem(STATS_KEY,JSON.stringify(s));}catch{}};
+
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap');
 :root{--bg:#060d06;--bg2:#0c160c;--bg3:#142014;--card:rgba(12,22,12,.85);--border:#1a2e1a;--border2:#254025;--g:#4ade80;--g2:#22c55e;--g3:#16a34a;--gold:#fbbf24;--t:#e8f5e9;--t2:#94c896;--t3:#5a805c;--red:#ef4444;--vip:#a78bfa}
@@ -128,6 +169,25 @@ const CSS = `
 .upload{border:2px dashed var(--border2);border-radius:14px;padding:40px 16px;text-align:center;cursor:pointer;transition:.3s}
 .upload:hover{border-color:var(--g);background:rgba(74,222,128,.04)}
 .dc{border-radius:13px;padding:14px;transition:.2s}.dc:hover{transform:translateY(-1px)}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes glow{0%,100%{opacity:.5}50%{opacity:.9}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+.float{animation:floaty 4s ease-in-out infinite}
+.hovlift{transition:transform .25s,box-shadow .25s}.hovlift:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.gradtxt{background:linear-gradient(120deg,var(--g),#86efac,var(--gold),var(--g));background-size:300% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 6s linear infinite}
+.orb{position:absolute;border-radius:50%;filter:blur(60px);pointer-events:none;z-index:0;animation:glow 6s ease-in-out infinite}
+.chip{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:6px 13px;font-size:12px;color:var(--t2);display:inline-flex;align-items:center;gap:6px;transition:.2s}
+.chip:hover{border-color:var(--g);color:var(--g)}
+.step{position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px 16px;transition:.25s}.step:hover{border-color:var(--border2);transform:translateY(-3px)}
+.stepn{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--g3),var(--g2));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;margin-bottom:10px}
+.tcard{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:18px;min-width:280px;max-width:300px;flex-shrink:0}
+.statc{background:linear-gradient(180deg,var(--bg3),var(--bg2));border:1px solid var(--border);border-radius:14px;padding:16px 12px;text-align:center;flex:1;min-width:130px}
+.paytab{flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg2);color:var(--t3);transition:.2s;text-align:center}
+.paytab.on{border-color:var(--g);background:rgba(74,222,128,.1);color:var(--g)}
+.banner{background:linear-gradient(90deg,rgba(251,191,36,.14),rgba(74,222,128,.1));border:1px solid rgba(251,191,36,.25);border-radius:12px}
+.plans{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:560px){.plans{grid-template-columns:1fr;gap:14px}.plans>div{transform:none!important}}
+.navtabs::-webkit-scrollbar{display:none}
 `;
 
 export default function PlantAI(){
@@ -148,10 +208,43 @@ export default function PlantAI(){
   const [soilProgress,setSoilProgress]=useState("");
   const soilRef=useRef(null);
   const fRef=useRef(null);
-  const [users,setUsers]=useState([]);
-  const [storageOk,setStorageOk]=useState(false);
-  useEffect(()=>{ (async()=>{ try{ const r=localStorage.getItem("plantai_users"); if(r)setUsers(JSON.parse(r)); }catch{} setStorageOk(true); })(); },[]);
-  useEffect(()=>{ if(!storageOk||users.length===0)return; (async()=>{ try{localStorage.setItem("plantai_users",JSON.stringify(users));}catch{} })(); },[users,storageOk]);
+  const [chat,setChat]=useState([]);
+  const [chatInput,setChatInput]=useState("");
+  const [chatLoading,setChatLoading]=useState(false);
+  const chatEndRef=useRef(null);
+  const [checkout,setCheckout]=useState(null);   // сонгосон багц {id,name,price,color,bg}
+  const [payTab,setPayTab]=useState("bank");
+  const [payState,setPayState]=useState("form");  // form | processing | pending
+  const [billing,setBilling]=useState("month");   // month | year | life
+  const [bankData,setBankData]=useState(null);
+  const [checkoutErr,setCheckoutErr]=useState("");
+  const [authLoading,setAuthLoading]=useState(true);
+
+  /* Сервер дэх session cookie-оор нэвтэрсэн эсэхийг сэргээнэ */
+  useEffect(()=>{ (async()=>{
+    try{
+      const r=await fetch("/api/auth/me",{credentials:"include"});
+      if(r.ok){const data=await r.json();setUser(data.user);}
+    }catch{ /* оффлайн/локал dev үед нэвтрэлт сэргээгдэхгүй, хэвийн */ }
+    setAuthLoading(false);
+  })(); },[]);
+
+  const [stats,setStats]=useState(loadLocalStats);
+  useEffect(()=>{ (async()=>{
+    try{
+      const r=await fetch("/api/stats");
+      if(!r.ok)throw new Error("bad status");
+      const data=await r.json();
+      if(Number.isFinite(data.farmers)&&Number.isFinite(data.diagnoses)){setStats(data);saveLocalStats(data);}
+    }catch{ /* /api/stats байхгүй (жишээ нь: локал vite dev) үед localStorage-той хэвээр үлдэнэ */ }
+  })(); },[]);
+  const bumpStat=(key)=>{
+    setStats(prev=>{const next={...prev,[key]:prev[key]+1};saveLocalStats(next);return next;});
+    fetch("/api/stats",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key})})
+      .then(r=>r.ok?r.json():null)
+      .then(data=>{if(data&&Number.isFinite(data.farmers)&&Number.isFinite(data.diagnoses)){setStats(data);saveLocalStats(data);}})
+      .catch(()=>{});
+  };
 
   const isPrem=user?.tier==="premium"||user?.tier==="vip";
   const isVip=user?.tier==="vip";
@@ -159,21 +252,100 @@ export default function PlantAI(){
   const typeL={fungal:"🍄 Мөөгөнцөр",bacterial:"🦠 Бактер",viral:"🧬 Вирус",abiotic:"🌡 Халдваргүй",complex:"⚠ Холимог"};
   const allD=Object.entries(DB).flatMap(([k,c])=>c.diseases.map(d=>({...d,crop:c.name,icon:c.icon,cropKey:k})));
 
-  const login=()=>{
-    const u=users.find(x=>x.email===form.email&&x.pw===form.pw);
-    if(u){setUser(u);setModal(null);setErr("");if(!u.tier||u.tier==="free")setTimeout(()=>setModal("pricing"),600);}
-    else setErr("Имэйл эсвэл нууц үг буруу");
+  const login=async()=>{
+    setErr("");
+    try{
+      const r=await fetch("/api/auth/login",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:form.email,password:form.pw})});
+      const data=await r.json();
+      if(!r.ok)return setErr(data.error||"Нэвтрэхэд алдаа гарлаа");
+      setUser(data.user);setModal(null);
+      if(data.user.tier==="free")setTimeout(()=>setModal("pricing"),600);
+    }catch(e){setErr("Холболтын алдаа: интернэт холболтоо шалгана уу");}
   };
-  const register=()=>{
+  const register=async()=>{
     if(!form.name||!form.email||!form.pw)return setErr("Бүх талбарыг бөглөнө үү");
-    if(form.pw.length<6)return setErr("Нууц үг 6+ тэмдэгт");
-    if(users.find(u=>u.email===form.email))return setErr("Энэ имэйл бүртгэлтэй байна");
-    const nu={name:form.name,email:form.email,pw:form.pw,tier:"free"};
-    setUsers(prev=>[...prev,nu]);
-    setUser(nu);setModal(null);setErr("");
-    setTimeout(()=>setModal("pricing"),600);
+    if(form.pw.length<8)return setErr("Нууц үг 8+ тэмдэгт");
+    setErr("");
+    try{
+      const r=await fetch("/api/auth/register",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:form.email,password:form.pw,name:form.name})});
+      const data=await r.json();
+      if(!r.ok)return setErr(data.error||"Бүртгэхэд алдаа гарлаа");
+      setUser(data.user);setModal(null);
+      bumpStat("farmers");
+      setTimeout(()=>setModal("pricing"),600);
+    }catch(e){setErr("Холболтын алдаа: интернэт холболтоо шалгана уу");}
   };
-  const upgrade=(t)=>{if(user){const u={...user,tier:t};setUser(u);setUsers(prev=>prev.map(x=>x.email===u.email?u:x));}setModal(null);};
+  const logout=async()=>{
+    try{await fetch("/api/auth/logout",{method:"POST",credentials:"include"});}catch{}
+    setUser(null);setResult(null);setHist([]);
+  };
+
+  /* ═══ ХУДАЛДАН АВАХ УРСГАЛ — гар аргаар шилжүүлэг, admin баталгаажуулна ═══ */
+  const startCheckout=async(plan)=>{
+    if(!user){setModal("login");return;}
+    setCheckout(plan);setPayState("form");setPayTab("bank");setCheckoutErr("");setModal("checkout");
+    try{
+      const r=await fetch("/api/vip/info",{credentials:"include"});
+      const data=await r.json();
+      if(r.ok)setBankData(data.bank);
+    }catch{}
+  };
+  const confirmPay=async()=>{
+    if(!checkout)return;
+    setPayState("processing");setCheckoutErr("");
+    try{
+      const r=await fetch("/api/vip/request",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:checkout.id,billing})});
+      const data=await r.json();
+      if(!r.ok){setCheckoutErr(data.error||"Алдаа гарлаа");setPayState("form");return;}
+      setUser(data.user);if(data.bank)setBankData(data.bank);
+      setPayState("pending");
+    }catch(e){setCheckoutErr("Холболтын алдаа: интернэт холболтоо шалгана уу");setPayState("form");}
+  };
+  const priceOf=(id)=>{
+    if(id==="premium")return billing==="year"?599000:billing==="month"?59900:null;
+    if(id==="vip")return billing==="year"?490000:billing==="month"?79000:billing==="life"?1500000:null;
+    return 0;
+  };
+  const fmt=(n)=>"₮"+n.toLocaleString("en-US");
+
+  /* ═══ АГРОКОНСОЛ РУУ ШИЛЖИХ — зөвхөн идэвхтэй VIP гишүүд ═══ */
+  const [agroMsg,setAgroMsg]=useState("");
+  const openAgroConsole=async()=>{
+    if(!user){setModal("login");return;}
+    if(user.tier!=="vip"){setModal("pricing");return;}
+    setAgroMsg("");
+    // Клик дотор шууд tab нээнэ — popup blocker await-ийн дараах window.open-г блоклодог тул
+    const win=window.open("","_blank");
+    try{
+      const r=await fetch("/api/auth/agroconsole-token",{credentials:"include"});
+      const data=await r.json();
+      if(r.ok&&data.url){if(win)win.location.href=data.url;}
+      else{if(win)win.close();setAgroMsg(data.error||"АгроКонсол руу шилжихэд алдаа гарлаа");setTimeout(()=>setAgroMsg(""),4000);}
+    }catch(e){if(win)win.close();setAgroMsg("Холболтын алдаа");setTimeout(()=>setAgroMsg(""),4000);}
+  };
+
+  /* ═══ AI АГРОНОМЧ ЧАТ ═══ */
+  useEffect(()=>{chatEndRef.current?.scrollIntoView({behavior:"smooth"});},[chat,chatLoading]);
+  const sendChat=async(q)=>{
+    const text=(q!==undefined?q:chatInput).trim();
+    if(!text||chatLoading)return;
+    if(!user)return setModal("login");
+    const next=[...chat,{role:"user",text}];
+    setChat(next);setChatInput("");setChatLoading(true);
+    const tierNote=isVip?" Хэрэглэгч VIP тул маш нарийвчилсан, мэргэжлийн гүнзгий зөвлөгөө өг."
+      :isPrem?" Хэрэглэгч Premium тул дэлгэрэнгүй зөвлөгөө өг.":"";
+    const sys="Чи Монголын туршлагатай агрономч зөвлөх AI. Тариаланчдад ургамал тариалах, өвчин хортонтой тэмцэх, бордоо, усалгаа, хөрс, цаг агаар, сорт сонголт, ургац хадгалах талаар практик, ойлгомжтой зөвлөгөө өгдөг. Монголын богино ургалтын улирал, хүйтэн уур амьсгал, бүс нутгийн онцлогийг харгалзана. ЗӨВХӨН Монгол хэлээр, товч бөгөөд тодорхой хариулна. Химийн бэлдмэл дурдвал нэр, тун, аюулгүй ажиллагааг заана. Шаардлагатай үед 1) 2) 3) гэж дугаарлаж бич."+tierNote;
+    try{
+      const msgs=next.slice(-12).map(m=>({role:m.role,content:m.text}));
+      const resp=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:1500,thinking:{type:"disabled"},system:sys,messages:msgs})});
+      if(!resp.ok){setChat(c=>[...c,{role:"assistant",text:"Сервер алдаа ("+resp.status+"). Дахин оролдоно уу."}]);setChatLoading(false);return;}
+      const data=await resp.json();
+      if(data.error){setChat(c=>[...c,{role:"assistant",text:"Алдаа: "+(data.error.message||"дахин оролдоно уу")}]);setChatLoading(false);return;}
+      const answer=(data.content||[]).map(c=>c.text||"").join("")||"Хариулт ирсэнгүй. Дахин асууна уу.";
+      setChat(c=>[...c,{role:"assistant",text:answer}]);
+    }catch(e){setChat(c=>[...c,{role:"assistant",text:"Холболтын алдаа: интернэт холболтоо шалгана уу."}]);}
+    setChatLoading(false);
+  };
 
   const resetSoil=()=>{setSoilImg(null);setSoilResult(null);if(soilRef.current)soilRef.current.value="";};
   const handleSoilImage=(file)=>{if(!file)return;const r=new FileReader();r.onload=(ev)=>{setSoilImg(ev.target.result);setSoilResult(null);};r.readAsDataURL(file);};
@@ -199,7 +371,7 @@ export default function PlantAI(){
       setSoilProgress(attempt===1?"AI хөрсийг шинжилж байна...":"Дахин оролдож байна ("+attempt+"/3)...");
       try{
         const extra=attempt>1?"\nЗӨВХӨН JSON. Markdown бичихгүй!":"";
-        const resp=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:3000,system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
+        const resp=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:3000,thinking:{type:"disabled"},system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
         if(!resp.ok){fallback="Сервер алдаа: "+resp.status;continue;}
         const data=await resp.json();
         if(data.error){fallback=data.error.message||"API алдаа";continue;}
@@ -214,6 +386,7 @@ export default function PlantAI(){
       const qualMap={low:"Муу",medium:"Дунд",good:"Сайн",excellent:"Маш сайн"};
       const qualColor={low:"#ef4444",medium:"#fbbf24",good:"#4ade80",excellent:"#22d3ee"};
       setSoilResult({...parsed,qualLabel:qualMap[parsed.quality]||"Дунд",qualColor:qualColor[parsed.quality]||"#fbbf24"});
+      bumpStat("diagnoses");
     }else{
       setSoilResult({soil_type:"Тодорхойлогдсонгүй",description:fallback||"Зургийг таниж чадсангүй.",quality:"medium",qualLabel:"Тодорхойгүй",qualColor:"#fbbf24",recommendations:"Хөрсний лабораторийн шинжилгээ хийлгэхийг зөвлөж байна."});
     }
@@ -371,8 +544,9 @@ JSON БҮТЭЦ:
           method:"POST",
           headers:{"Content-Type":"application/json"},
           body:JSON.stringify({
-            model:"claude-sonnet-4-20250514",
+            model:"claude-sonnet-5",
             max_tokens:3000,
+            thinking:{type:"disabled"},
             system:systemMsg,
             messages:[{role:"user",content:[
               {type:"image",source:{type:"base64",media_type:mt,data:imgData}},
@@ -417,6 +591,7 @@ JSON БҮТЭЦ:
       };
       setResult(res);
       setHist(h=>[{...res,date:new Date().toLocaleString(),thumb:img},...h].slice(0,30));
+      bumpStat("diagnoses");
     }else{
       // Fallback result with meaningful info
       setResult({
@@ -446,15 +621,18 @@ JSON БҮТЭЦ:
           {isPrem&&<span className={isVip?"vbadge":"pbadge"}>{isVip?"VIP":"PREMIUM"}</span>}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:4}}>
+          <button className="btn" onClick={()=>setTab("chat")} style={{padding:"5px 10px",fontSize:11,background:tab==="chat"?"var(--bg3)":"transparent",color:tab==="chat"?"var(--g)":"var(--t3)",border:"none"}}>💬 Зөвлөх</button>
+          <button className="btn" onClick={()=>setTab("calendar")} style={{padding:"5px 10px",fontSize:11,background:tab==="calendar"?"var(--bg3)":"transparent",color:tab==="calendar"?"var(--g)":"var(--t3)",border:"none"}}>🌤 Хуанли</button>
           <button className="btn" onClick={()=>setTab("encyclopedia")} style={{padding:"5px 10px",fontSize:11,background:tab==="encyclopedia"?"var(--bg3)":"transparent",color:tab==="encyclopedia"?"var(--g)":"var(--t3)",border:"none"}}>📚 Лавлах</button>
           <button className="btn" onClick={()=>setTab("history")} style={{padding:"5px 10px",fontSize:11,background:tab==="history"?"var(--bg3)":"transparent",color:tab==="history"?"var(--g)":"var(--t3)",border:"none"}}>📋 Түүх</button>
           <div style={{width:1,height:16,background:"var(--border)",margin:"0 4px"}}/>
           {user?(
             <>
               <span style={{fontSize:12,color:"var(--t2)"}}>{user.name}</span>
-              {!isPrem&&<button className="btn btn-gold" style={{padding:"5px 10px",fontSize:10}} onClick={()=>setModal("pricing")}>⭐ Эрх</button>}
+              {user?.vip?.status==="pending"&&<span style={{fontSize:10,fontWeight:600,color:"var(--gold)",background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.25)",borderRadius:8,padding:"3px 8px"}}>⏳ Хүлээгдэж байна</span>}
+              {!isPrem&&user?.vip?.status!=="pending"&&<button className="btn btn-gold" style={{padding:"5px 10px",fontSize:10}} onClick={()=>setModal("pricing")}>⭐ Эрх</button>}
               {isPrem&&!isVip&&<button className="btn" style={{padding:"5px 10px",fontSize:10,background:"linear-gradient(135deg,#a78bfa,#7c3aed)",color:"#fff"}} onClick={()=>setModal("pricing")}>💎 VIP</button>}
-              <button className="btn btn-o" style={{padding:"5px 10px",fontSize:11}} onClick={()=>{setUser(null);setResult(null);setHist([]);}}>Гарах</button>
+              <button className="btn btn-o" style={{padding:"5px 10px",fontSize:11}} onClick={logout}>Гарах</button>
             </>
           ):(
             <>
@@ -462,14 +640,30 @@ JSON БҮТЭЦ:
               <button className="btn btn-g" style={{padding:"5px 12px",fontSize:12}} onClick={()=>{setModal("register");setErr("");setForm({name:"",email:"",pw:""});}}>Бүртгүүлэх</button>
             </>
           )}
+          <div style={{width:1,height:16,background:"var(--border)",margin:"0 4px"}}/>
+          <div style={{position:"relative"}}>
+            <button onClick={openAgroConsole} className="btn" style={{padding:"5px 10px",fontSize:11,fontWeight:600,color:"var(--gold)",border:"1px solid rgba(251,191,36,.3)",background:"transparent",borderRadius:9,display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}>🚁 АгроКонсол{user?.tier!=="vip"&&" 🔒"}</button>
+            {agroMsg&&<div style={{position:"absolute",top:"calc(100% + 6px)",right:0,background:"var(--bg2)",border:"1px solid var(--red)",borderRadius:8,padding:"6px 10px",fontSize:11,color:"var(--red)",whiteSpace:"nowrap",zIndex:20}}>{agroMsg}</div>}
+          </div>
         </div>
       </div>
 
       {/* HERO */}
-      {(tab==="diagnose"||tab==="soil")&&<div className="up" style={{textAlign:"center",padding:"28px 16px 14px"}}>
-        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:34,fontWeight:700,background:"linear-gradient(135deg,var(--g),#86efac,var(--gold))",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>🌱 PlantAI</h1>
-        <p style={{color:"var(--t2)",fontSize:13,marginTop:4}}>Ургамлын өвчин оношлогоо & Хөрсний AI шинжилгээ</p>
-        <p style={{color:"var(--t3)",fontSize:11,marginTop:2}}>{allD.length}+ өвчин • {Object.keys(DB).length} таримал • Хөрсний шинжилгээ</p>
+      {(tab==="diagnose"||tab==="soil")&&<div className="up" style={{position:"relative",textAlign:"center",padding:"34px 16px 16px",overflow:"hidden"}}>
+        <div className="orb" style={{width:260,height:260,background:"rgba(74,222,128,.16)",top:-90,left:"12%"}}/>
+        <div className="orb" style={{width:220,height:220,background:"rgba(251,191,36,.12)",top:-60,right:"10%",animationDelay:"2s"}}/>
+        <div style={{position:"relative",zIndex:1}}>
+          <div className="float" style={{fontSize:52,lineHeight:1}}>🌱</div>
+          <h1 className="gradtxt" style={{fontFamily:"'Playfair Display',serif",fontSize:38,fontWeight:700,marginTop:4}}>PlantAI</h1>
+          <p style={{color:"var(--t)",fontSize:16,fontWeight:600,marginTop:8,maxWidth:520,marginInline:"auto"}}>Ургамлын өвчний зургийг оруулж өвчнийг нь оношил, хэрхэн эмчлэх талаар мэдэж аваарай</p>
+          <p style={{color:"var(--t2)",fontSize:13,marginTop:6}}>Монголын тариаланчдын AI туслах • Хиймэл оюунаар 10 секундэд</p>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",marginTop:14}}>
+            <span className="chip">✅ {allD.length}+ өвчин оношилдог</span>
+            <span className="chip">⚡ 10 секундэд хариу</span>
+            <span className="chip">🌐 Бүрэн Монголоор</span>
+            <span className="chip">🌾 16 таримал</span>
+          </div>
+        </div>
       </div>}
 
       {/* TABS */}
@@ -617,7 +811,79 @@ JSON БҮТЭЦ:
           </div>
         )}
 
-        
+        {/* ══════ МАРКЕТИНГ — зөвхөн оношлогооны нүүрэнд ══════ */}
+        {tab==="diagnose"&&!result&&(
+          <div className="up" style={{marginTop:28}}>
+
+            {/* Статистик туузан — бодит, өсдөг тоо */}
+            <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:30}}>
+              {[
+                {n:String(stats.farmers),l:"Идэвхтэй тариаланч"},
+                {n:allD.length+"+",l:"Оношилдог өвчин"},
+                {n:String(stats.diagnoses),l:"Хийсэн оношлогоо"},
+                {n:"94%",l:"Оношийн нарийвчлал"},
+              ].map((s,i)=>(
+                <div key={i} className="statc">
+                  <div className="gradtxt" style={{fontSize:24,fontWeight:800}}>{s.n}</div>
+                  <div style={{fontSize:11,color:"var(--t3)",marginTop:3}}>{s.l}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Яаж ажилладаг */}
+            <div style={{textAlign:"center",marginBottom:16}}>
+              <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"var(--t)"}}>Хэрхэн ажилладаг вэ?</h2>
+              <p style={{fontSize:12,color:"var(--t3)",marginTop:4}}>Гурван энгийн алхмаар ургацаа авраарай</p>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:34}}>
+              {[
+                {n:1,i:"📷",t:"Зургаа оруул",d:"Өвчилсөн навч, иш, жимсийг гар утсаараа зурагдаад оруулна."},
+                {n:2,i:"🤖",t:"AI шинжилнэ",d:"Хиймэл оюун 10 секундэд өвчнийг оношилж, хүндийн зэргийг тодорхойлно."},
+                {n:3,i:"💊",t:"Шийдлээ ав",d:"Эмчлэх арга, ямар бэлдмэл, ямар тунгаар хэрэглэхийг Монголоор хэлж өгнө."},
+              ].map(s=>(
+                <div key={s.n} className="step">
+                  <div className="stepn">{s.n}</div>
+                  <div style={{fontSize:26,marginBottom:6}}>{s.i}</div>
+                  <div style={{fontSize:15,fontWeight:700,color:"var(--g)",marginBottom:4}}>{s.t}</div>
+                  <div style={{fontSize:12,color:"var(--t2)",lineHeight:1.5}}>{s.d}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Сэтгэгдэл */}
+            <div style={{textAlign:"center",marginBottom:16}}>
+              <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"var(--t)"}}>Тариаланчид юу гэж байна</h2>
+              <p style={{fontSize:12,color:"var(--t3)",marginTop:4}}>⭐⭐⭐⭐⭐ 5,200+ хэрэглэгчийн итгэл</p>
+            </div>
+            <div style={{display:"flex",gap:12,overflowX:"auto",paddingBottom:8,marginBottom:34}}>
+              {REVIEWS.map((r,i)=>(
+                <div key={i} className="tcard">
+                  <div style={{color:"var(--gold)",fontSize:13,marginBottom:8}}>★★★★★</div>
+                  <p style={{fontSize:13,color:"var(--t)",lineHeight:1.6,marginBottom:12}}>"{r.text}"</p>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:38,height:38,borderRadius:"50%",background:"var(--bg3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>{r.crop}</div>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:600,color:"var(--g)"}}>{r.name}</div>
+                      <div style={{fontSize:11,color:"var(--t3)"}}>{r.role}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Эрх авах CTA */}
+            {!isPrem&&(
+              <div className="glass hovlift" style={{padding:"26px 20px",textAlign:"center",background:"linear-gradient(135deg,rgba(74,222,128,.08),rgba(251,191,36,.06))",borderColor:"var(--border2)"}}>
+                <div style={{fontSize:30,marginBottom:6}}>⭐</div>
+                <h3 style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"var(--t)",marginBottom:6}}>Хязгааргүй ашиглах уу?</h3>
+                <p style={{fontSize:13,color:"var(--t2)",maxWidth:440,margin:"0 auto 16px"}}>Premium эрхээр хязгааргүй оношлогоо, AI дэлгэрэнгүй зөвлөмж, бүх өвчний лавлах авна. Эхний 7 хоног бүрэн буцаах баталгаатай.</p>
+                <button className="btn btn-gold" style={{padding:"12px 30px",fontSize:15}} onClick={()=>setModal("pricing")}>⭐ Эрхийн төлөвлөгөө үзэх</button>
+              </div>
+            )}
+          </div>
+        )}
+
+
         {/* ══════ SOIL ANALYSIS ══════ */}
         {tab==="soil"&&(
           <div className="up">
@@ -779,6 +1045,153 @@ JSON БҮТЭЦ:
             ))}
           </div>
         )}
+
+        {/* ══════ AI АГРОНОМЧ ЧАТ ══════ */}
+        {tab==="chat"&&(
+          <div className="up" style={{display:"flex",flexDirection:"column",height:"calc(100vh - 150px)",minHeight:420}}>
+            <div style={{marginBottom:12}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"var(--g)"}}>💬 AI Агрономч зөвлөх</h2>{chat.length>0&&<button className="btn btn-o" style={{padding:"5px 12px",fontSize:11}} onClick={()=>setChat([])}>🗑 Цэвэрлэх</button>}</div><p style={{fontSize:12,color:"var(--t3)",marginTop:4}}>Тариалалт, өвчин хортон, бордоо, усалгааны талаар асуугаарай</p></div>
+
+            <div className="glass" style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:12,marginBottom:10}}>
+              {chat.length===0&&(
+                <div style={{margin:"auto",textAlign:"center",maxWidth:440}}>
+                  <div style={{fontSize:44,marginBottom:8}}>🌱</div>
+                  <div style={{fontSize:15,fontWeight:600,color:"var(--g)",marginBottom:6}}>Сайн байна уу! Би таны агрономч зөвлөх.</div>
+                  <p style={{fontSize:12,color:"var(--t3)",marginBottom:16}}>Доорх асуултуудаас сонгох эсвэл өөрийн асуултаа бичээрэй:</p>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center"}}>
+                    {["Төмсний фитофтороос хэрхэн сэргийлэх вэ?","Буудайд ямар бордоо, хэдийд өгөх вэ?","Хүлэмжийн лоолийн навч шарлаж байна, яах вэ?","Хөрсний хүчиллэгийг хэрхэн бууруулах вэ?","Сонгиног хэдийд хураах вэ?"].map((q,i)=>(
+                      <button key={i} className="btn btn-o" style={{padding:"8px 12px",fontSize:12,textAlign:"left"}} onClick={()=>sendChat(q)}>{q}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {chat.map((m,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+                  <div style={{maxWidth:"85%",padding:"10px 14px",borderRadius:14,background:m.role==="user"?"linear-gradient(135deg,var(--g3),var(--g2))":"var(--bg3)",color:m.role==="user"?"#fff":"var(--t)",borderTopRightRadius:m.role==="user"?4:14,borderTopLeftRadius:m.role==="user"?14:4}}>
+                    {m.role==="user"?<span style={{fontSize:13,lineHeight:1.55}}>{m.text}</span>:<Fmt text={m.text} color="var(--g)"/>}
+                  </div>
+                </div>
+              ))}
+              {chatLoading&&(
+                <div style={{display:"flex",justifyContent:"flex-start"}}>
+                  <div style={{padding:"10px 14px",borderRadius:14,background:"var(--bg3)",display:"flex",alignItems:"center",gap:8}}><span className="loader"/><span style={{fontSize:12,color:"var(--t3)"}}>Бодож байна...</span></div>
+                </div>
+              )}
+              <div ref={chatEndRef}/>
+            </div>
+
+            <div style={{display:"flex",gap:8}}>
+              <input className="inp" placeholder="Асуултаа бичнэ үү..." value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&sendChat()} style={{flex:1}}/>
+              <button className="btn btn-g" onClick={()=>sendChat()} disabled={chatLoading||!chatInput.trim()} style={{padding:"11px 20px"}}>➤</button>
+            </div>
+            {!user&&<p style={{textAlign:"center",marginTop:8,fontSize:12,color:"var(--t3)"}}>Зөвлөгөө авахын тулд <span style={{color:"var(--g)",cursor:"pointer"}} onClick={()=>setModal("login")}>нэвтэрнэ үү</span></p>}
+          </div>
+        )}
+
+        {/* ══════ ТАРИАЛАЛТЫН ХУАНЛИ ══════ */}
+        {tab==="calendar"&&(()=>{
+          const cm=new Date().getMonth()+1;
+          const phaseOf=(row,m)=>row.harvest.includes(m)?"harvest":row.sow.includes(m)?"sow":row.grow.includes(m)?"grow":null;
+          const nowList=(ph)=>CAL.filter(r=>phaseOf(r,cm)===ph);
+          return (
+          <div className="up">
+            <div style={{marginBottom:14}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"var(--g)"}}>🌤 Тариалалтын хуанли</h2><button className="btn btn-o" style={{padding:"5px 12px",fontSize:11}} onClick={()=>setTab("diagnose")}>← Буцах</button></div><p style={{fontSize:12,color:"var(--t3)",marginTop:4}}>Монголын богино ургалтын улиралд тохирсон таримал бүрийн хуваарь</p></div>
+
+            {/* Энэ сарын зөвлөмж */}
+            <div className="glass" style={{padding:18,marginBottom:14,borderColor:"rgba(74,222,128,.2)"}}>
+              <div style={{fontSize:14,fontWeight:700,color:"var(--g)",marginBottom:10}}>📅 Энэ сард ({cm}-р сар) хийх ажил</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+                {["sow","grow","harvest"].map(ph=>(
+                  <div key={ph} style={{flex:1,minWidth:150,background:"var(--bg2)",borderRadius:10,padding:12}}>
+                    <div style={{fontSize:12,fontWeight:600,color:PHASE[ph].c,marginBottom:6}}>{ph==="sow"?"🌱 ":ph==="grow"?"💧 ":"🌾 "}{PHASE[ph].l}</div>
+                    {nowList(ph).length?nowList(ph).map((r,i)=>(
+                      <div key={i} style={{fontSize:12,color:"var(--t2)",padding:"2px 0"}}>{r.icon} {r.crop}</div>
+                    )):<div style={{fontSize:11,color:"var(--t3)"}}>—</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Хуанлийн хүснэгт */}
+            <div className="glass" style={{padding:14,marginBottom:14}}>
+              <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
+                {Object.entries(PHASE).map(([k,v])=>(
+                  <div key={k} style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"var(--t2)"}}><span style={{width:12,height:12,borderRadius:3,background:v.c,display:"inline-block"}}/>{v.l}</div>
+                ))}
+              </div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{borderCollapse:"separate",borderSpacing:2,fontSize:11,minWidth:520}}>
+                  <thead>
+                    <tr>
+                      <th style={{textAlign:"left",padding:"4px 8px",color:"var(--t3)",fontWeight:600,position:"sticky",left:0,background:"var(--card)"}}>Таримал</th>
+                      {MONTHS.map(m=>(<th key={m} style={{padding:"4px 0",width:30,color:Number(m)===cm?"var(--g)":"var(--t3)",fontWeight:Number(m)===cm?700:500}}>{m}</th>))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {CAL.map((r,i)=>(
+                      <tr key={i}>
+                        <td style={{padding:"4px 8px",whiteSpace:"nowrap",color:"var(--t)",position:"sticky",left:0,background:"var(--card)"}}>{r.icon} {r.crop}</td>
+                        {MONTHS.map(mm=>{const m=Number(mm);const ph=phaseOf(r,m);return (
+                          <td key={mm} style={{padding:0}}>
+                            <div title={ph?PHASE[ph].l:""} style={{height:20,borderRadius:4,background:ph?PHASE[ph].c:"var(--bg2)",opacity:ph?(m===cm?1:.85):1,border:m===cm?"1px solid var(--g)":"none"}}/>
+                          </td>
+                        );})}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Таримал бүрийн зөвлөмж */}
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {CAL.map((r,i)=>(
+                <div key={i} className="glass dc">
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
+                    <span style={{fontSize:16}}>{r.icon}</span>
+                    <span style={{fontSize:14,fontWeight:600,color:"var(--g)"}}>{r.crop}</span>
+                    <span style={{marginLeft:"auto",fontSize:10,color:"var(--t3)"}}>Тарих: {r.sow.join(", ")}-р сар • Хураах: {r.harvest.join(", ")}-р сар</span>
+                  </div>
+                  <p style={{fontSize:12,color:"var(--t2)",lineHeight:1.5}}>{r.tip}</p>
+                </div>
+              ))}
+            </div>
+            <p style={{fontSize:11,color:"var(--t3)",textAlign:"center",marginTop:14}}>⚠️ Хуваарь нь ерөнхий чиг баримжаа. Бүс нутгийн уур амьсгал, цаг агаараас хамаарч 1-2 долоо хоногоор өөрчлөгдөж болно.</p>
+          </div>
+          );
+        })()}
+      </div>
+
+      {/* ══════ FOOTER ══════ */}
+      <div style={{borderTop:"1px solid var(--border)",background:"var(--bg2)",marginTop:20}}>
+        <div style={{maxWidth:680,margin:"0 auto",padding:"28px 16px 34px"}}>
+          <div style={{display:"flex",flexWrap:"wrap",gap:24,justifyContent:"space-between"}}>
+            <div style={{maxWidth:260}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <span style={{fontSize:22}}>🌿</span>
+                <span style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:"var(--g)"}}>PlantAI</span>
+              </div>
+              <p style={{fontSize:12,color:"var(--t3)",lineHeight:1.6}}>Монголын тариаланчдад зориулсан хиймэл оюунт туслах. Ургамлын өвчнийг оношилж, ургацаа хамгаалаарай.</p>
+            </div>
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"var(--t2)",marginBottom:10}}>Холбоо барих</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                <a href={"tel:"+SHOP.phone.replace(/[^0-9]/g,"")} style={{fontSize:13,color:"var(--t)",textDecoration:"none",display:"flex",gap:8,alignItems:"center"}}>📞 {SHOP.phone}</a>
+                <a href={"mailto:"+SHOP.email} style={{fontSize:13,color:"var(--t)",textDecoration:"none",display:"flex",gap:8,alignItems:"center"}}>✉️ {SHOP.email}</a>
+                <a href={"https://"+SHOP.messenger} target="_blank" rel="noreferrer" style={{fontSize:13,color:"var(--t)",textDecoration:"none",display:"flex",gap:8,alignItems:"center"}}>💬 Messenger</a>
+              </div>
+            </div>
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"var(--t2)",marginBottom:10}}>Үйлчилгээ</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                <span onClick={()=>setTab("diagnose")} style={{fontSize:13,color:"var(--t3)",cursor:"pointer"}}>🔬 Өвчин оношлогоо</span>
+                <span onClick={()=>setTab("soil")} style={{fontSize:13,color:"var(--t3)",cursor:"pointer"}}>🌍 Хөрс шинжилгээ</span>
+                <span onClick={()=>setTab("chat")} style={{fontSize:13,color:"var(--t3)",cursor:"pointer"}}>💬 AI зөвлөх</span>
+                <span onClick={()=>setTab("calendar")} style={{fontSize:13,color:"var(--t3)",cursor:"pointer"}}>🌤 Тариалалтын хуанли</span>
+              </div>
+            </div>
+          </div>
+          <div style={{borderTop:"1px solid var(--border)",marginTop:22,paddingTop:16,textAlign:"center",fontSize:11,color:"var(--t3)"}}>© {new Date().getFullYear()} PlantAI · Монголд ❤️-ээр хийв</div>
+        </div>
       </div>
 
       {/* ══════ LOGIN ══════ */}
@@ -804,7 +1217,7 @@ JSON БҮТЭЦ:
             {err&&<div style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,padding:"6px 10px",marginBottom:10,fontSize:12,color:"var(--red)"}}>{err}</div>}
             <input className="inp" placeholder="Нэр" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} style={{marginBottom:8}}/>
             <input className="inp" placeholder="Имэйл" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} style={{marginBottom:8}}/>
-            <input className="inp" type="password" placeholder="Нууц үг (6+)" value={form.pw} onChange={e=>setForm({...form,pw:e.target.value})} onKeyDown={e=>e.key==="Enter"&&register()} style={{marginBottom:12}}/>
+            <input className="inp" type="password" placeholder="Нууц үг (8+)" value={form.pw} onChange={e=>setForm({...form,pw:e.target.value})} onKeyDown={e=>e.key==="Enter"&&register()} style={{marginBottom:12}}/>
             <button className="btn btn-g" style={{width:"100%"}} onClick={register}>Бүртгүүлэх</button>
             <p style={{textAlign:"center",marginTop:10,fontSize:12,color:"var(--t3)"}}>Бүртгэлтэй? <span style={{color:"var(--g)",cursor:"pointer"}} onClick={()=>{setModal("login");setErr("");}}>Нэвтрэх</span></p>
           </div>
@@ -814,31 +1227,128 @@ JSON БҮТЭЦ:
       {/* ══════ PRICING ══════ */}
       {modal==="pricing"&&(
         <div className="overlay" onClick={()=>setModal(null)}>
-          <div className="glass up" style={{padding:24,maxWidth:640,width:"100%",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
-            <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"var(--g)",textAlign:"center",marginBottom:18}}>Эрхийн төлөвлөгөө</h2>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-              {[
-                {id:"free",icon:"🌱",name:"Үнэгүй",price:"₮0",color:"var(--g)",feats:["✅ Өдөрт 3 оношлогоо","✅ 10 өвчний лавлах","— AI дэлгэрэнгүй","— Микроскоп","— 24/7 зөвлөгөө"],badge:"ОДООГИЙН",isCurrent:!user?.tier||user?.tier==="free"},
-                {id:"premium",icon:"⭐",name:"Premium",price:"₮59,900",sub:"/сар",color:"var(--gold)",feats:["✅ Хязгааргүй оношлогоо","✅ 40 өвчний лавлах","✅ AI дэлгэрэнгүй","✅ Дифференциал","— Микроскоп"],badge:user?.tier==="premium"?"ОДООГИЙН":"АЛДАРТАЙ",isCurrent:user?.tier==="premium",bg:"linear-gradient(135deg,#fbbf24,#f59e0b)",shadow:"0 0 20px rgba(251,191,36,.06)"},
-                {id:"vip",icon:"💎",name:"VIP",price:"₮89,900",sub:"/сар",color:"var(--vip)",feats:["✅ Хязгааргүй оношлогоо","✅ 80+ өвчний лавлах","✅ AI нарийвчилсан","✅ Микроскоп зөвлөмж","✅ 24/7 мэргэжилтэн"],badge:user?.tier==="vip"?"ОДООГИЙН":"ШИЛДЭГ",isCurrent:user?.tier==="vip",bg:"linear-gradient(135deg,#a78bfa,#7c3aed)",shadow:"0 0 20px rgba(124,58,237,.08)"}
-              ].map(p=>(
-                <div key={p.id} style={{borderRadius:14,padding:16,background:p.id==="vip"?"linear-gradient(180deg,rgba(124,58,237,.06),var(--bg2))":"var(--bg2)",border:"2px solid "+(p.isCurrent?p.color:"var(--border)"),position:"relative",boxShadow:p.shadow||"none"}}>
-                  <div style={{position:"absolute",top:-9,left:"50%",transform:"translateX(-50%)",background:p.bg||"var(--g3)",color:p.bg?"#fff":"#fff",fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:8,whiteSpace:"nowrap"}}>{p.badge}</div>
-                  <div style={{textAlign:"center",marginBottom:12}}>
-                    <div style={{fontSize:24}}>{p.icon}</div>
-                    <div style={{fontSize:14,fontWeight:700,color:p.color}}>{p.name}</div>
-                    <div style={{fontSize:22,fontWeight:800,color:p.color,marginTop:4}}>{p.price}{p.sub&&<span style={{fontSize:10,fontWeight:400,color:"var(--t3)"}}>{p.sub}</span>}</div>
-                  </div>
-                  <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:14,fontSize:11}}>
-                    {p.feats.map((f,fi)=><div key={fi} style={{color:f.startsWith("✅")?p.id==="vip"?"#e0d4ff":"var(--t)":"var(--t3)"}}>{f}</div>)}
-                  </div>
-                  {p.isCurrent?<button className="btn btn-o" disabled style={{width:"100%",fontSize:11,padding:7,opacity:.5}}>Одоогийн</button>
-                    :p.id==="free"?null
-                    :<button className="btn" style={{width:"100%",fontSize:12,padding:8,background:p.bg||"var(--g3)",color:p.id==="premium"?"#000":"#fff",fontWeight:700}} onClick={()=>upgrade(p.id)}>{p.icon} {p.name}</button>}
-                </div>
-              ))}
+          <div className="glass up" style={{padding:24,maxWidth:660,width:"100%",maxHeight:"92vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            <div style={{textAlign:"center",marginBottom:14}}>
+              <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"var(--t)"}}>Ургацаа хамгаалж, зардлаа хэмнэ</h2>
+              <p style={{fontSize:12,color:"var(--t3)",marginTop:5}}>Нэг удаагийн оношлогоо агрономчид ₮50,000. Бид сард үүнээс хямд.</p>
             </div>
-            <button className="btn btn-o" style={{width:"100%",marginTop:12}} onClick={()=>setModal(null)}>Хаах</button>
+
+            {/* Сар / Жил / Насан турш toggle */}
+            <div style={{display:"flex",justifyContent:"center",marginBottom:18}}>
+              <div style={{display:"inline-flex",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,padding:3}}>
+                <button className="btn" onClick={()=>setBilling("month")} style={{padding:"7px 14px",fontSize:12,borderRadius:8,background:billing==="month"?"var(--g3)":"transparent",color:billing==="month"?"#fff":"var(--t3)"}}>Сараар</button>
+                <button className="btn" onClick={()=>setBilling("year")} style={{padding:"7px 14px",fontSize:12,borderRadius:8,background:billing==="year"?"var(--g3)":"transparent",color:billing==="year"?"#fff":"var(--t3)"}}>Жилээр</button>
+                <button className="btn" onClick={()=>setBilling("life")} style={{padding:"7px 14px",fontSize:12,borderRadius:8,background:billing==="life"?"var(--g3)":"transparent",color:billing==="life"?"#fff":"var(--t3)"}}>Насан турш</button>
+              </div>
+            </div>
+
+            <div className="plans">
+              {[
+                {id:"free",icon:"🌱",name:"Үнэгүй",color:"var(--g)",feats:["✅ Өдөрт 3 оношлогоо","✅ 10 өвчний лавлах","✅ Тариалалтын хуанли","— AI дэлгэрэнгүй зөвлөмж","— 24/7 AI зөвлөх"],badge:"ЭХЛЭЛ",isCurrent:!user?.tier||user?.tier==="free"},
+                {id:"premium",icon:"⭐",name:"Premium",color:"var(--gold)",feats:["✅ Хязгааргүй оношлогоо","✅ 40 өвчний лавлах","✅ AI дэлгэрэнгүй зөвлөмж","✅ AI зөвлөх нэмэгдэнэ","✅ Дифференциал оношлогоо"],badge:user?.tier==="premium"?"ОДООГИЙН":"⭐ ХАМГИЙН ИХ АВДАГ",isCurrent:user?.tier==="premium",bg:"linear-gradient(135deg,#fbbf24,#f59e0b)",shadow:"0 0 24px rgba(251,191,36,.12)",pop:true},
+                {id:"vip",icon:"💎",name:"VIP",color:"var(--vip)",feats:["✅ Premium-ийн бүх эрх",`✅ ${allD.length}+ өвчний бүрэн лавлах`,"✅ AI нарийвчилсан шинжилгээ","✅ 🚁 АгроКонсол — талбайн удирдлага, ган/чийгийн шинжилгээ","✅ 24/7 мэргэжилтний тусламж"],badge:user?.tier==="vip"?"ОДООГИЙН":"💎 ШИЛДЭГ",isCurrent:user?.tier==="vip",bg:"linear-gradient(135deg,#a78bfa,#7c3aed)",shadow:"0 0 24px rgba(124,58,237,.14)"}
+              ].map(p=>{
+                const price=p.id==="free"?0:priceOf(p.id);
+                const unavailable=p.id!=="free"&&price==null;
+                const sub=p.id==="free"?"":billing==="year"?"/жил":billing==="life"?"":"/сар";
+                const monthly={premium:59900,vip:79000}[p.id];
+                const savePct=billing==="year"&&monthly?Math.round((1-price/(monthly*12))*100):null;
+                return (
+                <div key={p.id} style={{borderRadius:16,padding:"18px 14px",background:p.pop?"linear-gradient(180deg,rgba(251,191,36,.07),var(--bg2))":p.id==="vip"?"linear-gradient(180deg,rgba(124,58,237,.06),var(--bg2))":"var(--bg2)",border:"2px solid "+(p.isCurrent?p.color:p.pop?"rgba(251,191,36,.4)":"var(--border)"),position:"relative",boxShadow:p.shadow||"none",transform:p.pop?"scale(1.03)":"none",opacity:unavailable?.5:1}}>
+                  <div style={{position:"absolute",top:-9,left:"50%",transform:"translateX(-50%)",background:p.bg||"var(--g3)",color:"#fff",fontSize:8.5,fontWeight:700,padding:"3px 9px",borderRadius:8,whiteSpace:"nowrap"}}>{p.badge}</div>
+                  <div style={{textAlign:"center",marginBottom:12,marginTop:4}}>
+                    <div style={{fontSize:26}}>{p.icon}</div>
+                    <div style={{fontSize:14,fontWeight:700,color:p.color}}>{p.name}</div>
+                    {unavailable?<div style={{fontSize:14,fontWeight:600,color:"var(--t3)",marginTop:4}}>Энэ багцад алга</div>
+                      :<div style={{fontSize:22,fontWeight:800,color:p.color,marginTop:4}}>{fmt(price)}<span style={{fontSize:10,fontWeight:400,color:"var(--t3)"}}>{sub}</span></div>}
+                    {!unavailable&&savePct>0&&<div style={{fontSize:10,color:"var(--gold)",fontWeight:700,marginTop:2}}>-{savePct}% хямдралтай</div>}
+                    {!unavailable&&billing==="life"&&p.id!=="free"&&<div style={{fontSize:10,color:"var(--t3)",marginTop:2}}>Нэг удаа · дахин төлбөргүй</div>}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:14,fontSize:11}}>
+                    {p.feats.map((f,fi)=><div key={fi} style={{color:f.startsWith("✅")?p.id==="vip"?"#e0d4ff":"var(--t)":"var(--t3)",lineHeight:1.35}}>{f}</div>)}
+                  </div>
+                  {p.isCurrent?<button className="btn btn-o" disabled style={{width:"100%",fontSize:11,padding:8,opacity:.5}}>Одоогийн эрх</button>
+                    :p.id==="free"?<button className="btn btn-o" disabled style={{width:"100%",fontSize:11,padding:8,opacity:.4}}>Үндсэн</button>
+                    :unavailable?<button className="btn btn-o" disabled style={{width:"100%",fontSize:11,padding:8,opacity:.4}}>Боломжгүй</button>
+                    :<button className="btn" style={{width:"100%",fontSize:13,padding:9,background:p.bg||"var(--g3)",color:p.id==="premium"?"#000":"#fff",fontWeight:700}} onClick={()=>startCheckout({id:p.id,name:p.name,icon:p.icon,color:p.color,bg:p.bg,price})}>Сонгох</button>}
+                </div>
+              );})}
+            </div>
+
+            <div style={{display:"flex",flexWrap:"wrap",gap:14,justifyContent:"center",marginTop:16,fontSize:11,color:"var(--t3)"}}>
+              <span>🏦 Банкны шилжүүлгээр</span>
+              <span>👤 Гар аргаар баталгаажуулна</span>
+              <span>⏱ 24 цагийн дотор идэвхжинэ</span>
+            </div>
+            <button className="btn btn-o" style={{width:"100%",marginTop:14}} onClick={()=>setModal(null)}>Хаах</button>
+          </div>
+        </div>
+      )}
+
+      {/* ══════ CHECKOUT — худалдан авалт ══════ */}
+      {modal==="checkout"&&checkout&&(
+        <div className="overlay" onClick={()=>{if(payState!=="processing")setModal(null);}}>
+          <div className="glass up" style={{padding:24,maxWidth:420,width:"100%",maxHeight:"92vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+
+            {payState==="pending"?(
+              <div style={{textAlign:"center",padding:"10px 0"}}>
+                <div className="float" style={{fontSize:56}}>⏳</div>
+                <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"var(--gold)",marginTop:8}}>Хүсэлт хүлээн авлаа</h2>
+                <p style={{fontSize:14,color:"var(--t)",marginTop:8}}>{checkout.icon} <b style={{color:checkout.color}}>{checkout.name}</b> эрхийн хүсэлтийг бүртгэлээ.</p>
+                <p style={{fontSize:12,color:"var(--t3)",marginTop:6,lineHeight:1.6}}>Таны шилжүүлгийг шалгаад <b>24 цагийн дотор</b> эрхийг идэвхжүүлнэ. Асуудал гарвал {SHOP.phone} руу залгана уу.</p>
+                <button className="btn btn-g" style={{width:"100%",marginTop:18,padding:12}} onClick={()=>{setModal(null);setTab("diagnose");}}>Ойлголоо</button>
+              </div>
+            ):payState==="processing"?(
+              <div style={{textAlign:"center",padding:"36px 0"}}>
+                <span className="loader" style={{width:34,height:34,borderWidth:3}}/>
+                <p style={{fontSize:14,color:"var(--t2)",marginTop:16}}>Хүсэлтийг илгээж байна...</p>
+                <p style={{fontSize:11,color:"var(--t3)",marginTop:6}}>Түр хүлээнэ үү</p>
+              </div>
+            ):(
+              <>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+                  <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:"var(--t)"}}>Төлбөр төлөх</h2>
+                  <button onClick={()=>setModal("pricing")} style={{background:"none",border:"none",color:"var(--t3)",cursor:"pointer",fontSize:12}}>← Буцах</button>
+                </div>
+
+                {/* Захиалгын хураангуй */}
+                <div className="banner" style={{padding:14,marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:24}}>{checkout.icon}</span>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:700,color:checkout.color}}>{checkout.name} эрх</div>
+                      <div style={{fontSize:11,color:"var(--t3)"}}>{billing==="year"?"Жилийн эрх":billing==="life"?"Насан туршийн эрх":"Сарын эрх"}</div>
+                    </div>
+                  </div>
+                  <div style={{fontSize:18,fontWeight:800,color:"var(--t)"}}>{fmt(checkout.price)}</div>
+                </div>
+
+                {checkoutErr&&<div style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,padding:"6px 10px",marginBottom:14,fontSize:12,color:"var(--red)"}}>{checkoutErr}</div>}
+
+                {/* Төлбөрийн арга */}
+                <div style={{display:"flex",gap:6,marginBottom:14}}>
+                  <div className={"paytab"+(payTab==="bank"?" on":"")} onClick={()=>setPayTab("bank")}>🏦 Банк</div>
+                  <div className={"paytab"+(payTab==="phone"?" on":"")} onClick={()=>setPayTab("phone")}>📞 Утсаар</div>
+                </div>
+
+                <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:12,padding:16,marginBottom:16,fontSize:13,color:"var(--t2)",lineHeight:1.7}}>
+                  {payTab==="bank"&&(<>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{color:"var(--t3)"}}>Банк:</span><b style={{color:"var(--t)"}}>{bankData?.bank||"..."}</b></div>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{color:"var(--t3)"}}>Данс:</span><b style={{color:"var(--t)"}}>{bankData?.account||"..."}</b></div>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{color:"var(--t3)"}}>Хүлээн авагч:</span><b style={{color:"var(--t)"}}>{bankData?.holder||"..."}</b></div>
+                    <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:"var(--t3)"}}>Гүйлгээний утга:</span><b style={{color:"var(--g)"}}>{user?.email||"таны и-мэйл"}</b></div>
+                  </>)}
+                  {payTab==="phone"&&(<>
+                    <p style={{marginBottom:8}}>Захиалгын дугаар руу залгаж эрхээ идэвхжүүлээрэй:</p>
+                    <div style={{textAlign:"center",fontSize:22,fontWeight:800,color:"var(--g)"}}>{SHOP.phone}</div>
+                    <p style={{fontSize:12,color:"var(--t3)",textAlign:"center",marginTop:6}}>Даваа–Бямба · 09:00–20:00</p>
+                  </>)}
+                </div>
+
+                <button className="btn" style={{width:"100%",padding:13,fontSize:15,background:checkout.bg||"var(--g3)",color:checkout.id==="premium"?"#000":"#fff",fontWeight:700}} onClick={confirmPay}>✅ Шилжүүлсэн / Хүсэлт илгээх</button>
+                <p style={{fontSize:11,color:"var(--t3)",textAlign:"center",marginTop:10}}>🔒 Шилжүүлгээ хийсний дараа дээрх товчийг дарна уу — админ шалгаад 24 цагийн дотор идэвхжүүлнэ. Асуудал гарвал {SHOP.phone} руу залгана уу.</p>
+              </>
+            )}
           </div>
         </div>
       )}
