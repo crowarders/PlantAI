@@ -235,6 +235,11 @@ export default function PlantAI(){
   const [weedLoading,setWeedLoading]=useState(false);
   const [weedProgress,setWeedProgress]=useState("");
   const weedRef=useRef(null);
+  const [pestImg,setPestImg]=useState(null);
+  const [pestResult,setPestResult]=useState(null);
+  const [pestLoading,setPestLoading]=useState(false);
+  const [pestProgress,setPestProgress]=useState("");
+  const pestRef=useRef(null);
   const fRef=useRef(null);
   const [chat,setChat]=useState([]);
   const [chatInput,setChatInput]=useState("");
@@ -379,6 +384,8 @@ export default function PlantAI(){
   const handleSoilImage=(file)=>{if(!file)return;const r=new FileReader();r.onload=(ev)=>{setSoilImg(ev.target.result);setSoilResult(null);};r.readAsDataURL(file);};
   const resetWeed=()=>{setWeedImg(null);setWeedResult(null);if(weedRef.current)weedRef.current.value="";};
   const handleWeedImage=(file)=>{if(!file)return;const r=new FileReader();r.onload=(ev)=>{setWeedImg(ev.target.result);setWeedResult(null);};r.readAsDataURL(file);};
+  const resetPest=()=>{setPestImg(null);setPestResult(null);if(pestRef.current)pestRef.current.value="";};
+  const handlePestImage=(file)=>{if(!file)return;const r=new FileReader();r.onload=(ev)=>{setPestImg(ev.target.result);setPestResult(null);};r.readAsDataURL(file);};
 
   const analyzeSoil=async()=>{
     if(!soilImg)return;
@@ -476,6 +483,54 @@ export default function PlantAI(){
       setWeedResult({weed_name:"Тодорхойлогдсонгүй",description:fallback||"Зургийг таниж чадсангүй.",danger:"medium",dangerLabel:"Тодорхойгүй",dangerColor:"#fbbf24",mechanical:"Ойрын агрономичид зургийг харуулж зөвлөгөө авахыг зөвлөж байна."});
     }
     setWeedLoading(false);
+  };
+
+  const analyzePest=async()=>{
+    if(!pestImg)return;
+    if(!user)return setModal("login");
+    setPestLoading(true);setPestResult(null);setPestProgress("Шавжийн зургийг бэлдэж байна...");
+
+    const tierNote=isVip
+      ?"\n[VIP] Маш нарийвчилсан: биологийн мөчлөг, өвлөлтийн хэлбэр, тархалтын эрсдэл, инсектицидийн сэлгээ, Монгол бүс нутгийн тархалт оруул."
+      :isPrem?"\n[Premium] Дэлгэрэнгүй: хяналтын хуанли, урьдчилан сэргийлэх зөвлөмж нэмж оруул.":"";
+
+    // Номын хортон шавжийн лавлахыг context болгон дамжуулж, таних нарийвчлал сайжруулна
+    let dbCtx="\n\n===== ТАРИМАЛ УРГАМЛЫН ХОРТОН ШАВЖИЙН ЛАВЛАХ (номоос) =====\n";
+    dbCtx+="Дараах жагсаалттай тааруулж танина (нэр — латин нэр — баг — овог — голлон гэмтээдэг таримал):\n";
+    PEST_DB.forEach((p)=>{ dbCtx+="- "+p.name+" — "+p.latin+" — "+p.order+" — "+p.family+" — "+p.host+"\n"; });
+
+    const sysMsg="Чи Монголын таримал ургамлын хортон шавж судлалын мэргэжилтэн AI. Хэрэглэгчийн илгээсэн шавж эсвэл шавжийн учруулсан гэмтлийн зургийг доорх лавлах номын жагсаалттай тааруулан таньж, төрөл зүйл, аюулын түвшин, тэмцэх аргыг тодорхойлно. ЗААВАЛ зөвхөн JSON хариулт. Markdown бичихгүй."+dbCtx;
+
+    const userMsg="Энэ хортон шавж (эсвэл түүний учруулсан гэмтлийн) зургийг дээрх лавлахтай нягт тааруулж таньж доорх JSON бүтцийг бөглөнө үү."+tierNote+"\n\nЗургаас шавжийн биеийн хэлбэр, өнгө, далавч эсвэл ургамал дээрх гэмтлийн шинж (навчны нүх, толбо, өндөг, авгалдай) ажиглаж таньна. Хэрэв лавлах дахь нэртэй таарч байвал яг тэр нэрийг ашигла.\n\n\"insecticide\" талбарт ЗААВАЛ дээрх лавлахын ТЭМЦЭХ АРГА хэсгийн бодит бүтээгдэхүүнийг (Фаскорд, Эсперо, Локустин гэх мэт) ашиглаж бич — зөвхөн ерөнхий бус, номын жинхэнэ нэрээр.\n\nЧУХАЛ: Бүх талбарыг ДУГААРЛАЖ бичнэ (1) 2) 3) гэх мэт).\n\n{\"pest_name\":\"хортон шавжийн Монгол нэр\",\"latin_name\":\"шинжлэх ухааны латин нэр\",\"order\":\"баг\",\"family\":\"овог\",\"danger\":\"low эсвэл medium эсвэл high эсвэл critical\",\"host\":\"голлон гэмтээдэг таримал\",\"description\":\"1) Танин мэдэх шинж тэмдэг. 2) Амьдралын мөчлөгийн онцлог.\",\"damage\":\"1) Ургамалд учруулах гэмтэл. 2) Ургацад үзүүлэх нөлөө.\",\"insecticide\":\"1) Тохирох инсектицидийн нэр. 2) Хэрэглэх хугацаа. 3) Анхаарах зүйл.\",\"prevention\":\"1) Агротехникийн арга (сэлгээ, хагалгаа г.м.). 2) Урьдчилан сэргийлэх.\",\"best_timing\":\"эмчилгээ хийх хамгийн тохиромжтой үе шат\",\"details\":\"нэмэлт мэргэжлийн мэдээлэл\"}";
+
+    const imgData=pestImg.split(",")[1];
+    const mt=pestImg.startsWith("data:image/png")?"image/png":pestImg.startsWith("data:image/webp")?"image/webp":"image/jpeg";
+
+    let parsed=null,fallback="";
+    for(let attempt=1;attempt<=3&&!parsed;attempt++){
+      setPestProgress(attempt===1?"AI хортон шавжийг таньж байна...":"Дахин оролдож байна ("+attempt+"/3)...");
+      try{
+        const extra=attempt>1?"\nЗӨВХӨН JSON. Markdown бичихгүй!":"";
+        const resp=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:3000,thinking:{type:"disabled"},system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
+        if(!resp.ok){fallback="Сервер алдаа: "+resp.status;continue;}
+        const data=await resp.json();
+        if(data.error){fallback=data.error.message||"API алдаа";continue;}
+        const text=(data.content||[]).map(c=>c.text||"").join("");
+        if(!text){fallback="Хоосон хариулт";continue;}
+        parsed=safeJSON(text);
+        if(!parsed)fallback=text.slice(0,300);
+      }catch(e){fallback="Холболтын алдаа: "+(e.message||"Интернэт шалгана уу");}
+    }
+    setPestProgress("");
+    if(parsed&&parsed.pest_name){
+      const dangerMap={low:"Бага",medium:"Дунд",high:"Өндөр",critical:"Маш өндөр"};
+      const dangerColor={low:"#4ade80",medium:"#fbbf24",high:"#f97316",critical:"#ef4444"};
+      setPestResult({...parsed,dangerLabel:dangerMap[parsed.danger]||"Дунд",dangerColor:dangerColor[parsed.danger]||"#fbbf24"});
+      bumpStat("diagnoses");
+    }else{
+      setPestResult({pest_name:"Тодорхойлогдсонгүй",description:fallback||"Зургийг таниж чадсангүй.",danger:"medium",dangerLabel:"Тодорхойгүй",dangerColor:"#fbbf24",prevention:"Ойрын агрономичид зургийг харуулж зөвлөгөө авахыг зөвлөж байна."});
+    }
+    setPestLoading(false);
   };
 
   const resetDiag=()=>{setCrop("");setImg(null);setResult(null);if(fRef.current)fRef.current.value="";};
@@ -735,7 +790,7 @@ JSON БҮТЭЦ:
       </div>
 
       {/* HERO */}
-      {(tab==="diagnose"||tab==="soil"||tab==="weed")&&<div className="up" style={{position:"relative",textAlign:"center",padding:"34px 16px 16px",overflow:"hidden"}}>
+      {(tab==="diagnose"||tab==="soil"||tab==="weed"||tab==="pest")&&<div className="up" style={{position:"relative",textAlign:"center",padding:"34px 16px 16px",overflow:"hidden"}}>
         <div className="orb" style={{width:260,height:260,background:"rgba(74,222,128,.16)",top:-90,left:"12%"}}/>
         <div className="orb" style={{width:220,height:220,background:"rgba(251,191,36,.12)",top:-60,right:"10%",animationDelay:"2s"}}/>
         <div style={{position:"relative",zIndex:1}}>
@@ -753,10 +808,11 @@ JSON БҮТЭЦ:
       </div>}
 
       {/* TABS */}
-      {(tab==="diagnose"||tab==="soil"||tab==="weed")&&<div style={{display:"flex",justifyContent:"center",gap:8,padding:"0 16px 14px",flexWrap:"wrap"}}>
+      {(tab==="diagnose"||tab==="soil"||tab==="weed"||tab==="pest")&&<div style={{display:"flex",justifyContent:"center",gap:8,padding:"0 16px 14px",flexWrap:"wrap"}}>
         <button className="btn" onClick={()=>setTab("diagnose")} style={{flex:1,maxWidth:220,padding:"12px 16px",fontSize:14,fontWeight:600,background:tab==="diagnose"?"var(--g3)":"var(--bg3)",color:tab==="diagnose"?"#fff":"var(--t3)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>🔬 Ургамлын өвчин оношлогоо</button>
         <button className="btn" onClick={()=>setTab("soil")} style={{flex:1,maxWidth:220,padding:"12px 16px",fontSize:14,fontWeight:600,background:tab==="soil"?"linear-gradient(135deg,#854d0e,#a16207)":"var(--bg3)",color:tab==="soil"?"#fff":"var(--t3)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>🌍 Хөрсний шинжилгээ</button>
         <button className="btn" onClick={()=>setTab("weed")} style={{flex:1,maxWidth:220,padding:"12px 16px",fontSize:14,fontWeight:600,background:tab==="weed"?"linear-gradient(135deg,#b91c1c,#dc2626)":"var(--bg3)",color:tab==="weed"?"#fff":"var(--t3)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>🍃 Хог ургамал таних</button>
+        <button className="btn" onClick={()=>setTab("pest")} style={{flex:1,maxWidth:220,padding:"12px 16px",fontSize:14,fontWeight:600,background:tab==="pest"?"linear-gradient(135deg,#c2410c,#ea580c)":"var(--bg3)",color:tab==="pest"?"#fff":"var(--t3)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>🐛 Хортон шавж таних</button>
       </div>}
 
       <div style={{maxWidth:680,margin:"0 auto",padding:"0 16px 36px"}}>
@@ -1193,6 +1249,107 @@ JSON БҮТЭЦ:
           </div>
         )}
 
+        {/* ══════ ХОРТОН ШАВЖ ТАНИХ ══════ */}
+        {tab==="pest"&&(
+          <div className="up">
+            {!pestResult?(
+              <>
+                <div className="glass" style={{padding:20,marginBottom:12}}>
+                  <input type="file" ref={pestRef} accept="image/*" onChange={e=>handlePestImage(e.target.files?.[0])} style={{display:"none"}}/>
+                  {pestImg?(
+                    <div>
+                      <div style={{position:"relative",marginBottom:12}}>
+                        <img src={pestImg} alt="" style={{width:"100%",maxHeight:280,objectFit:"cover",borderRadius:12}}/>
+                        <button onClick={resetPest} style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,.7)",color:"#fff",border:"none",borderRadius:8,padding:"4px 10px",cursor:"pointer",fontSize:12}}>✕</button>
+                      </div>
+                      <div style={{fontSize:12,color:"var(--g)",textAlign:"center"}}>✅ Зураг бэлэн</div>
+                    </div>
+                  ):(
+                    <div className="upload" onClick={()=>pestRef.current?.click()}>
+                      <div style={{fontSize:48,marginBottom:8}}>🐛</div>
+                      <div style={{color:"var(--g)",fontSize:16,fontWeight:600,marginBottom:4}}>Хортон шавжийн зургаа оруулна уу</div>
+                      <div style={{color:"var(--t3)",fontSize:12}}>Шавж өөрөө эсвэл түүний учруулсан гэмтлийн (навчны нүх, толбо) ойрын зураг</div>
+                    </div>
+                  )}
+                </div>
+                {pestImg&&(
+                  <button className="btn btn-g" onClick={analyzePest} disabled={pestLoading} style={{width:"100%",padding:14,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:8,animation:!pestLoading?"pulse 2s infinite":"none"}}>
+                    {pestLoading?(<><span className="loader"/> {pestProgress||"Таньж байна..."}</>):"🐛 Хортон шавж таних"}
+                  </button>
+                )}
+                {!user&&pestImg&&<p style={{textAlign:"center",marginTop:8,fontSize:12,color:"var(--t3)"}}>Таних функцийг ашиглахын тулд <span style={{color:"var(--g)",cursor:"pointer"}} onClick={()=>setModal("login")}>нэвтрэх</span> шаардлагатай</p>}
+              </>
+            ):(
+              <div className="up" style={{display:"flex",flexDirection:"column",gap:12}}>
+                <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                  {pestImg&&<img src={pestImg} alt="" style={{width:56,height:56,objectFit:"cover",borderRadius:10,border:"1px solid var(--border)"}}/>}
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,color:"var(--t3)"}}>Хортон шавж таних</div>
+                    <div style={{fontSize:16,fontWeight:700,color:"var(--g)"}}>{pestResult.pest_name}</div>
+                    {pestResult.latin_name&&<div style={{fontSize:11,color:"var(--t3)",fontStyle:"italic"}}>{pestResult.latin_name}</div>}
+                  </div>
+                  <button className="btn btn-o" onClick={resetPest} style={{padding:"6px 14px",fontSize:12}}>🐛 Шинэ зураг</button>
+                </div>
+
+                <div className="glass" style={{padding:20}}>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:14}}>
+                    {pestResult.danger&&<div style={{background:"rgba(0,0,0,.3)",borderRadius:10,padding:"8px 14px",flex:1,minWidth:120,textAlign:"center"}}><div style={{fontSize:10,color:"var(--t3)"}}>Аюулын түвшин</div><div style={{fontSize:16,fontWeight:700,color:pestResult.dangerColor}}>{pestResult.dangerLabel}</div></div>}
+                    {pestResult.order&&<div style={{background:"rgba(0,0,0,.3)",borderRadius:10,padding:"8px 14px",flex:1,minWidth:120,textAlign:"center"}}><div style={{fontSize:10,color:"var(--t3)"}}>Баг</div><div style={{fontSize:13,fontWeight:700,color:"var(--g)"}}>{pestResult.order}</div></div>}
+                    {pestResult.host&&<div style={{background:"rgba(0,0,0,.3)",borderRadius:10,padding:"8px 14px",flex:1,minWidth:120,textAlign:"center"}}><div style={{fontSize:10,color:"var(--t3)"}}>Голлон гэмтээдэг</div><div style={{fontSize:13,fontWeight:700,color:"var(--gold)"}}>{pestResult.host}</div></div>}
+                  </div>
+                  {pestResult.description&&<div style={{marginTop:6}}><div style={{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:5}}>📋 Танин мэдэх шинж</div><Fmt text={pestResult.description} color="var(--t2)"/></div>}
+                </div>
+
+                {pestResult.damage&&(
+                  <div className="glass" style={{padding:20,borderColor:"rgba(239,68,68,.2)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                      <div style={{width:36,height:36,borderRadius:10,background:"rgba(239,68,68,.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>⚠️</div>
+                      <div><div style={{fontSize:15,fontWeight:700,color:"var(--red)"}}>Учруулах хохирол</div><div style={{fontSize:11,color:"var(--t3)"}}>Ургамал, ургацад үзүүлэх сөрөг нөлөө</div></div>
+                    </div>
+                    <div style={{background:"rgba(239,68,68,.04)",padding:14,borderRadius:12,border:"1px solid rgba(239,68,68,.08)"}}><Fmt text={pestResult.damage} color="var(--red)"/></div>
+                  </div>
+                )}
+
+                {pestResult.insecticide&&(
+                  <div className="glass" style={{padding:20,borderColor:"rgba(74,222,128,.2)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                      <div style={{width:36,height:36,borderRadius:10,background:"rgba(74,222,128,.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>🧪</div>
+                      <div><div style={{fontSize:15,fontWeight:700,color:"var(--g)"}}>Химийн эмчилгээ</div><div style={{fontSize:11,color:"var(--t3)"}}>Инсектицидийн зөвлөмж</div></div>
+                    </div>
+                    <div style={{background:"rgba(74,222,128,.04)",padding:14,borderRadius:12,border:"1px solid rgba(74,222,128,.08)"}}><Fmt text={pestResult.insecticide} color="var(--g)"/></div>
+                  </div>
+                )}
+
+                {pestResult.prevention&&(
+                  <div className="glass" style={{padding:20,borderColor:"rgba(96,165,250,.2)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                      <div style={{width:36,height:36,borderRadius:10,background:"rgba(96,165,250,.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>🚜</div>
+                      <div><div style={{fontSize:15,fontWeight:700,color:"#60a5fa"}}>Агротехникийн арга</div><div style={{fontSize:11,color:"var(--t3)"}}>Урьдчилан сэргийлэх, химийн бус хяналт</div></div>
+                    </div>
+                    <div style={{background:"rgba(96,165,250,.04)",padding:14,borderRadius:12,border:"1px solid rgba(96,165,250,.08)"}}><Fmt text={pestResult.prevention} color="#60a5fa"/></div>
+                  </div>
+                )}
+
+                {pestResult.details&&isPrem&&(
+                  <div className="glass" style={{padding:20,borderColor:isVip?"rgba(167,139,250,.2)":"rgba(251,191,36,.2)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                      <div style={{width:36,height:36,borderRadius:10,background:isVip?"rgba(167,139,250,.1)":"rgba(251,191,36,.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>{isVip?"💎":"⭐"}</div>
+                      <div><div style={{fontSize:15,fontWeight:700,color:isVip?"var(--vip)":"var(--gold)"}}>{isVip?"VIP":"Premium"} дэлгэрэнгүй</div></div>
+                    </div>
+                    <div style={{background:isVip?"rgba(167,139,250,.04)":"rgba(251,191,36,.04)",padding:14,borderRadius:12,border:"1px solid "+(isVip?"rgba(167,139,250,.08)":"rgba(251,191,36,.08)")}}><Fmt text={pestResult.details} color={isVip?"var(--vip)":"var(--gold)"}/></div>
+                  </div>
+                )}
+                {pestResult.details&&!isPrem&&(
+                  <div className="glass" style={{padding:16,textAlign:"center",borderColor:"rgba(251,191,36,.15)"}}>
+                    <p style={{fontSize:12,color:"var(--gold)",marginBottom:6}}>⭐ Нэмэлт мэдээлэл Premium / VIP эрхтэй</p>
+                    <button className="btn btn-gold" style={{padding:"6px 16px",fontSize:12}} onClick={()=>setModal("pricing")}>Эрх авах</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ══════ ENCYCLOPEDIA ══════ */}
         {tab==="encyclopedia"&&(
           <div className="up">
@@ -1409,6 +1566,7 @@ JSON БҮТЭЦ:
                 <span onClick={()=>setTab("diagnose")} style={{fontSize:13,color:"var(--t3)",cursor:"pointer"}}>🔬 Өвчин оношлогоо</span>
                 <span onClick={()=>setTab("soil")} style={{fontSize:13,color:"var(--t3)",cursor:"pointer"}}>🌍 Хөрс шинжилгээ</span>
                 <span onClick={()=>setTab("weed")} style={{fontSize:13,color:"var(--t3)",cursor:"pointer"}}>🍃 Хог ургамал таних</span>
+                <span onClick={()=>setTab("pest")} style={{fontSize:13,color:"var(--t3)",cursor:"pointer"}}>🐛 Хортон шавж таних</span>
                 <span onClick={()=>setTab("chat")} style={{fontSize:13,color:"var(--t3)",cursor:"pointer"}}>💬 AI зөвлөх</span>
                 <span onClick={()=>setTab("calendar")} style={{fontSize:13,color:"var(--t3)",cursor:"pointer"}}>🌤 Тариалалтын хуанли</span>
               </div>
