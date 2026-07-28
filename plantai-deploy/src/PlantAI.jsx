@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { WEED_DB, CONTROL_GUIDE, isGrassWeed, isParasiticWeed } from "./weedData.js";
 
 const DB = {
   wheat:{name:"Буудай",icon:"🌾",diseases:[
@@ -207,6 +208,7 @@ export default function PlantAI(){
   const [soilLoading,setSoilLoading]=useState(false);
   const [soilProgress,setSoilProgress]=useState("");
   const soilRef=useRef(null);
+  const [weedCrop,setWeedCrop]=useState("grain");
   const [weedImg,setWeedImg]=useState(null);
   const [weedResult,setWeedResult]=useState(null);
   const [weedLoading,setWeedLoading]=useState(false);
@@ -409,9 +411,21 @@ export default function PlantAI(){
       ?"\n[VIP] Маш нарийвчилсан: биологийн онцлог, үрийн нөөцийн үлдэх хугацаа, тэсвэржилтийн эрсдэл, холимог гербицидийн хослол, Монгол бүс нутгийн тархалт оруул."
       :isPrem?"\n[Premium] Дэлгэрэнгүй: сэлгэн тариалалтын зөвлөмж, урьдчилан сэргийлэх арга нэмж оруул.":"";
 
-    const sysMsg="Чи Монголын хог ургамал судлалын мэргэжилтэн AI. Хэрэглэгчийн илгээсэн хог ургамлын зургийг таньж, төрөл зүйл, аюулын түвшин, устгах аргыг тодорхойлно. ЗААВАЛ зөвхөн JSON хариулт. Markdown бичихгүй.";
+    // Монголын хог ургамлын лавлах номын мэдээллийг context болгон дамжуулж, таних нарийвчлал сайжруулна
+    let dbCtx="\n\n===== МОНГОЛЫН ХОГ УРГАМЛЫН ЛАВЛАХ (номоос) =====\n";
+    dbCtx+="Дараах жагсаалттай тааруулж танина (нэр — латин нэр — овог — амьдралын мөчлөг):\n";
+    WEED_DB.forEach((w)=>{ dbCtx+="- "+w.name+" — "+w.latin+" — "+w.family+" — "+w.lifecycle+"\n"; });
 
-    const userMsg="Энэ хог ургамлын зургийг нягтлан таньж доорх JSON бүтцийг бөглөнө үү."+tierNote+"\n\nЗургаас навчны хэлбэр, ишний бүтэц, цэцэглэлт, үндэсний системийг ажиглаж таньна.\n\nЧУХАЛ: Бүх талбарыг ДУГААРЛАЖ бичнэ (1) 2) 3) гэх мэт).\n\n{\"weed_name\":\"хог ургамлын Монгол нэр\",\"latin_name\":\"шинжлэх ухааны латин нэр\",\"category\":\"өргөн навчт эсвэл нарийн навчт (үетэн) эсвэл олон наст үндэслэг\",\"danger\":\"low эсвэл medium эсвэл high эсвэл critical\",\"description\":\"1) Танин мэдэх шинж тэмдэг. 2) Ургалтын онцлог.\",\"damage\":\"1) Ургацад учруулах хохирол. 2) Тэжээл/ус/гэрлийн өрсөлдөөн.\",\"herbicide\":\"1) Тохирох гербицидийн бүлэг, нэр. 2) Тун, шүршилтийн хугацаа. 3) Анхаарах зүйл.\",\"mechanical\":\"1) Механик устгах арга. 2) Сэлгэн тариалалт, урьдчилан сэргийлэх.\",\"best_timing\":\"эмчилгээ хийх хамгийн тохиромжтой ургалтын үе шат\",\"details\":\"нэмэлт мэргэжлийн мэдээлэл\"}";
+    const cg=CONTROL_GUIDE[weedCrop]||CONTROL_GUIDE.grain;
+    dbCtx+="\n===== ТЭМЦЭХ АРГА (номын бодит гербицид/тун, "+cg.label+") =====\n";
+    dbCtx+="Ерөнхий зарчим: "+CONTROL_GUIDE.general.text+"\n";
+    dbCtx+="Хос үрийн талт (өргөн навчт) хог ургамалд: "+cg.broadleaf+"\n";
+    dbCtx+="Үет (нарийн навчт) хог ургамалд: "+cg.grass+"\n";
+    dbCtx+="Уриншийн боловсруулалт: "+CONTROL_GUIDE.fallow.all+"\n";
+
+    const sysMsg="Чи Монголын хог ургамал судлалын мэргэжилтэн AI. Хэрэглэгчийн илгээсэн хог ургамлын зургийг доорх лавлах номын жагсаалттай тааруулан таньж, төрөл зүйл, аюулын түвшин, устгах аргыг тодорхойлно. ЗААВАЛ зөвхөн JSON хариулт. Markdown бичихгүй."+dbCtx;
+
+    const userMsg="Энэ хог ургамлын зургийг дээрх лавлахтай нягт тааруулж таньж доорх JSON бүтцийг бөглөнө үү."+tierNote+"\n\nЗургаас навчны хэлбэр, ишний бүтэц, цэцэглэлт, үндэсний системийг ажиглаж таньна. Хэрэв лавлах дахь нэртэй таарч байвал яг тэр нэрийг ашигла.\n\n\"herbicide\" талбарт ЗААВАЛ дээрх ТЭМЦЭХ АРГА хэсгийн бодит бүтээгдэхүүн/тунг (өргөн навчт эсвэл үет эсэхээс шалтгаалан) ашиглаж бич — зөвхөн ерөнхий бус, номын жинхэнэ нэр/тунгаар. Хэрэв шимэгч ургамал (жишээ нь ороонго, гувшаахай) бол стандарт гербицид үл ажиллахыг дурд, эзэн ургамлыг сэлгэх/механикаар устгахыг зөвлө.\n\nЧУХАЛ: Бүх талбарыг ДУГААРЛАЖ бичнэ (1) 2) 3) гэх мэт).\n\n{\"weed_name\":\"хог ургамлын Монгол нэр\",\"latin_name\":\"шинжлэх ухааны латин нэр\",\"category\":\"өргөн навчт эсвэл нарийн навчт (үетэн) эсвэл олон наст үндэслэг\",\"danger\":\"low эсвэл medium эсвэл high эсвэл critical\",\"description\":\"1) Танин мэдэх шинж тэмдэг. 2) Ургалтын онцлог.\",\"damage\":\"1) Ургацад учруулах хохирол. 2) Тэжээл/ус/гэрлийн өрсөлдөөн.\",\"herbicide\":\"1) Тохирох гербицидийн нэр, тун (номын жинхэнэ өгөгдлөөр). 2) Шүршилтийн хугацаа. 3) Анхаарах зүйл.\",\"mechanical\":\"1) Механик устгах арга. 2) Сэлгэн тариалалт, урьдчилан сэргийлэх.\",\"best_timing\":\"эмчилгээ хийх хамгийн тохиромжтой ургалтын үе шат\",\"details\":\"нэмэлт мэргэжлийн мэдээлэл\"}";
 
     const imgData=weedImg.split(",")[1];
     const mt=weedImg.startsWith("data:image/png")?"image/png":weedImg.startsWith("data:image/webp")?"image/webp":"image/jpeg";
@@ -1053,6 +1067,14 @@ JSON БҮТЭЦ:
           <div className="up">
             {!weedResult?(
               <>
+                <div className="glass" style={{padding:16,marginBottom:12}}>
+                  <div style={{fontSize:12,fontWeight:600,color:"var(--t2)",marginBottom:8}}>Ямар талбайд ургаж байна вэ? (гербицидийн зөвлөмжид нөлөөлнө)</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {[["grain","🌾 Үр тариа"],["potato","🥔 Төмс"],["vegetable","🥬 Ногоо"],["rapeseed","🌻 Рапс"],["fallow","🟤 Уринш"]].map(([k,l])=>(
+                      <button key={k} onClick={()=>setWeedCrop(k)} className="btn" style={{padding:"7px 12px",fontSize:12,fontWeight:600,borderRadius:9,background:weedCrop===k?"var(--g3)":"var(--bg2)",color:weedCrop===k?"#fff":"var(--t3)",border:`1px solid ${weedCrop===k?"var(--g3)":"var(--border)"}`}}>{l}</button>
+                    ))}
+                  </div>
+                </div>
                 <div className="glass" style={{padding:20,marginBottom:12}}>
                   <input type="file" ref={weedRef} accept="image/*" onChange={e=>handleWeedImage(e.target.files?.[0])} style={{display:"none"}}/>
                   {weedImg?(
