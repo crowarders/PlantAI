@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { WEED_DB, CONTROL_GUIDE, isGrassWeed, isParasiticWeed } from "./weedData.js";
+import { PEST_DB } from "./pestData.js";
 
 const DB = {
   wheat:{name:"Буудай",icon:"🌾",diseases:[
@@ -11,11 +12,19 @@ const DB = {
     {name:"Хатуу харуу",pathogen:"Tilletia tritici",type:"fungal",symptoms:"Өвчтэй түрүү 5-10 см богино, хайрс дэрдийсэн, цэнхэр туяатай тод хар ногоон.",treatment:"Үрийн ариутгал, тэсвэртэй сорт",severity:"high"},
     {name:"Ишний зэв",pathogen:"Puccinia graminis",type:"fungal",symptoms:"Иш, навчны углуурга дээр том хүрэн/хар төвгөр.",treatment:"Тэсвэртэй сорт, фунгицид",severity:"high"},
     {name:"Шар зэв",pathogen:"Puccinia glumarum",type:"fungal",symptoms:"Навчин дээр эгнээгээр байрласан жижиг шар төвгөрүүд.",treatment:"Тэсвэртэй сорт, эрт илрүүлэх",severity:"medium"},
+    {name:"Үетний гуалах",pathogen:"Blumeria graminis",type:"fungal",symptoms:"Навч, иш, углуургад цагаан хөвсгөр өнгөр үүсч, хожим саарал болж хар цэгтэй (клейстотеци) болно. Амьсгалах гадаргууг багасгаж, бутлалт муудна.",treatment:"Тэсвэртэй сорт тарих, агротехникийн цогцолбор арга хэмжээ, фунгицид заавраар",severity:"medium"},
+    {name:"Үндэсний хузуувчийн илжрэл",pathogen:"Pseudocercosporella herpotrichoides",type:"fungal",symptoms:"Ишний угт хүрэн 'нүдэн' хэлбэрийн толбо (eyespot) үүсч, дотор нь хар мөөгөнцрийн эд агуулна. Ургамал хялран уначихдаг, ургац буурна.",treatment:"Тэсвэртэй сортын том фракцын үр сонгох, ЭТС мөрдөх, үрийг Скарлет/Тебу-60-оор ариутгах",severity:"medium"},
+    {name:"Давжаа харуу",pathogen:"Tilletia controversa",type:"fungal",symptoms:"Халдвартай ургамал эрүүл ургамлаас 1.5-4 дахин богино, олон иш (50 хүртэл) үүснэ. Түрүү нягт, богино, дотор нь тоосорхог хар спор (телиоспор)-оор дүүрнэ.",treatment:"Олон талбайт ЭТС мөрдөх, том фракцын эрүүл үрээр тарих, системийн фунгицидээр үр ариутгах",severity:"high"},
+    {name:"Түрүүний фузариоз",pathogen:"Fusarium spp.",type:"fungal",symptoms:"Түрүүн дээр цайвар ягаан/улаан туяа, дэрэнцэр үүснэ. Их өвчилсөн үрээр хийсэн гурил хортой ('согтоодог талх') аммиак ялгаруулна.",treatment:"Олон талбайт ЭТС мөрдөх, тэсвэртэй сорт, хөрсийг хөмрүүлж хагалах, Титул дуо/Титул-390 фунгицид 50% цэцэглэлтийн үед",severity:"critical"},
   ]},
   barley:{name:"Арвай",icon:"🌿",diseases:[
     {name:"Чулуут харуу",pathogen:"Ustilago hordei",type:"fungal",symptoms:"Түрүү нилэнхүйдээ хатуу хар өнгөтэй болж хувирна.",treatment:"Үрийн ариутгал, тэсвэртэй сорт",severity:"high"},
     {name:"Тоост харуу",pathogen:"Ustilago nuda",type:"fungal",symptoms:"Түрүү бүхэлдээ хар тоосорхог спор болж зөвхөн гол иш үлдэнэ.",treatment:"Системийн фунгицидээр үрийг боловсруулах",severity:"high"},
     {name:"Давжаа зэв",pathogen:"Puccinia hordei",type:"fungal",symptoms:"Навчин дээр жижигхэн шар өнгөтэй төвгөрүүд.",treatment:"Тэсвэртэй сорт, фунгицид",severity:"medium"},
+    {name:"Судалт толбожилт",pathogen:"Pyrenophora graminea",type:"fungal",symptoms:"Соёолж эхлэх үед навчин дээр шар зурвас, ирмэгний дагуу сунадаг. Толбо хурдан ургаж навч бүхэлдээ хатаж үхнэ. Түрүү сайн хөгжихгүй буюу ариутгагдана.",treatment:"Тэсвэртэй сорт тарих, үрийг Скарлет/Тебу-60 фунгицидээр ариутгах",severity:"high"},
+    {name:"Торон толбожилт",pathogen:"Pyrenophora teres",type:"fungal",symptoms:"Навчин дээр торон хэлбэрийн хүрэн зурвас толбо үүсч, шарлаж хатна.",treatment:"ЭТС мөрдөх, ургамлын үлдэгдлийг зайлуулах, үрийг Скарлет/Тебу-60-оор ариутгах",severity:"medium"},
+    {name:"Хар хүрэн толбожилт",pathogen:"Bipolaris sorokiniana",type:"fungal",symptoms:"Навчин дээр хар саарал/цайвар хүрэн зурвас толбо навчны уртын дагуу сунана, төв хэсэг цайвар. Ишний доод хэсэг гэмтэж ургамал налж болно.",treatment:"ЭТС мөрдөх, хөрсийг хөмрүүлж хагалах, тэсвэртэй сорт, үрийн ариутгал",severity:"medium"},
+    {name:"Хүрээт толбожилт",pathogen:"Rhynchosporium secalis",type:"fungal",symptoms:"Навчин дээр цайвар саарал-ногоон өнгийн, бараан хүрээтэй усархаг том толбо ('scald' шарх шиг) үүснэ.",treatment:"Тэсвэртэй сорт, ЭТС мөрдөх, үрийн ариутгал",severity:"medium"},
   ]},
   potato:{name:"Төмс",icon:"🥔",diseases:[
     {name:"Фитофтор",pathogen:"Phytophthora infestans",type:"fungal",symptoms:"Навчны захаар хар хүрэн толбо. Доод талд цагаан өнгөр. Булцуунд хонхойсон хүрэн толбо.",treatment:"Фунгицид (манкозеб, металаксил), тэсвэртэй сорт",severity:"critical"},
@@ -34,6 +43,7 @@ const DB = {
     {name:"Саарал илжрэл",pathogen:"Botrytis cinerea",type:"fungal",symptoms:"Хадгалалтын үед навч нялцайн ялзарч саарал хөгцөөр хучигдана.",treatment:"2-3 хамгаалалтын навчтай хадгалах, агуулахыг гэрэлтүүлэх",severity:"medium"},
     {name:"Судлын бактериоз",pathogen:"Xanthomonas campestris",type:"bacterial",symptoms:"Навчны захаас шарлаж хатна. Судлууд харласан.",treatment:"Эрүүл үрийн материал, дулаан усаар үрийг боловсруулах",severity:"high"},
     {name:"Салслаг бактериоз",pathogen:"Erwinia carotovora",type:"bacterial",symptoms:"Навчинд бор усархаг толбууд. Толгой дотроосоо илжирнэ.",treatment:"Хортонтой тэмцэх, механик гэмтлээс хамгаалах",severity:"high"},
+    {name:"Фузариозын сульдаа",pathogen:"Fusarium brassicae",type:"fungal",symptoms:"Доод хэсгийн навч нэг талаасаа шарлаж гандана, дараа нь толгой руу тархана. Ишний хөндлөн огтлолд судасны хүрэнтэлт.",treatment:"Өвчилсөн ургамлыг устгах, үрийг 45-50°C усанд 20 минут ариутгах, эрүүл суулгац, пестицид заавраар",severity:"high"},
   ]},
   onion:{name:"Сонгино",icon:"🧅",diseases:[
     {name:"Зэв",pathogen:"Puccinia porri",type:"fungal",symptoms:"Цоорон дээр цайвар шаргал зууван толбо.",treatment:"Фунгицид, сэлгэх тариалалт",severity:"medium"},
@@ -41,6 +51,7 @@ const DB = {
     {name:"Харуу",pathogen:"Urocystis cepulae",type:"fungal",symptoms:"Цоорон дээр саарал/харавтар зурвас хэлбэрийн хөөсөн толбо.",treatment:"Эрүүл үрийн материал, хөрс ариутгах",severity:"high"},
     {name:"Хүзүүвчийн илжрэл",pathogen:"Botrytis allii",type:"fungal",symptoms:"Хүзүүвчээсээ саарал хөвсгөр хөгц. Эд зөөлөрч шаравтар шүүс.",treatment:"Хадгалалтын чийг дулааны горимыг сахих",severity:"medium"},
     {name:"Бактерийн нойтон илжрэл",pathogen:"Erwinia carotovora",type:"bacterial",symptoms:"Махлаг эдүүд зөөлөрч өмхий үнэртэй.",treatment:"Хуурай сэрүүн нөхцөлд хадгалах",severity:"high"},
+    {name:"Ёроолын илжрэл",pathogen:"Fusarium oxysporum f. cepae",type:"fungal",symptoms:"Ургамал шарлаж хатах, доод хэсгийн навч цоохор болно. Ёроолын хэсэг цайвар/ягаавтар хэлбэрийн ялзарч, хадгалалтын үед үргэлжлэн тархана.",treatment:"ЭТС мөрдөх, эрүүл суулгацын материал, өвчилсөн үлдэгдлийг устгах, фунгицид",severity:"high"},
   ]},
   garlic:{name:"Сармис",icon:"🧄",diseases:[
     {name:"Ногоон хөгц",pathogen:"Penicillium glaucum",type:"fungal",symptoms:"Хумсны гадаргууд хөх ногоон сэвсгэр хөгцөөр бүрхэгдэнэ.",treatment:"Хуурай сэрүүн нөхцөлд хадгалах",severity:"medium"},
@@ -99,6 +110,15 @@ const DB = {
     {name:"Фузари хялрал",pathogen:"Fusarium oxysporum f.sp. conglutinans",type:"fungal",symptoms:"Ургамлын нэг тал шарлаж хялрана. Ишний хөндлөн огтлолд бор судасны гэмтэл. Навч доороос дээш шарлаж хатна. Хөрс дулаан (>24°C) үед тархана.",treatment:"Carbendazim, Thiophanate-methyl хөрсний фунгицид. Үрийн боловсруулалт: Trichoderma viride + Carbendazim. Био хяналт: Trichoderma harzianum. Pseudomonas fluorescens.",severity:"medium"},
     {name:"Астерын шарлалт",pathogen:"Aster Yellows Phytoplasma",type:"viral",symptoms:"Цэцэг ногоон болж гажуудна. Навч шарлаж жижигрэнэ. Буурцаг гажуудалтай. Ургамлын өсөлт удааширна. Aster leafhopper шавжаар дамждаг.",treatment:"Шууд эмчилгээ байхгүй. Leafhopper-ийн эсрэг инсектицид: Lambda-cyhalothrin, Deltamethrin. Халдварлагдсан ургамлыг шуурхай устгах.",severity:"medium"},
     {name:"Вертицилл судалт өвчин",pathogen:"Verticillium longisporum",type:"fungal",symptoms:"Ишинд нэг эсвэл хоёр талдаа судалт шинж тэмдэг. Навч шарлаж нэг талдаа хялрана. Ишний хөндлөн огтлолд бараан судасны гэмтэл. Ургамал эрт боловсорч ургац буурна.",treatment:"Бүртгэлтэй фунгицид байхгүй. Био хяналт судлагдаж байна. Халдварлагдсан ургамлыг устгаж шатаах.",severity:"medium"},
+  ]},
+  watermelon:{name:"Тарвас",icon:"🍉",diseases:[
+    {name:"Альтернариоз",pathogen:"Alternaria cucumerina",type:"fungal",symptoms:"Навчинд цайвар бор өнгийн толбо үүсч богино хугацаанд томорч гадаргууг бүрхэнэ. Жимсэнд хонхойсон дугуй шарх, чийгтэй үед ягаавтар хөгц ургана.",treatment:"Таримлын сэлгээ мөрдөх, ургацын үлдэгдлийг устгах, эхний шинж тэмдэг дээр 2-3 долоо хоногийн зайтай фунгицид шүршиж давтах",severity:"medium"},
+  ]},
+  melon:{name:"Гуа",icon:"🍈",diseases:[
+    {name:"Хуурмаг гуалах",pathogen:"Pseudoperonospora cubensis",type:"fungal",symptoms:"Навчны ар талд саарал-ягаан өнгийн спорын бөөгнөрөл, дээд талд толбо. Гэмтсэн навч бор өнгөтэй болж унана, жимс томрохгүй.",treatment:"Эрүүл үрээр тариалах, сэлгээ мөрдөх, өвчилсөн үлдэгдлийг намар цэвэрлэж устгах, фунгицид",severity:"high"},
+  ]},
+  rye:{name:"Хөх тариа",icon:"🟤",diseases:[
+    {name:"Ишний харуу",pathogen:"Urocystis occulta",type:"fungal",symptoms:"Ургамлын иш болон навчны судлын дагуу бага зэрэг гүдгэр, саарал-хөхөвтөр туш судал (цэврүү) үүснэ. Хожим хагарч хар тоосорхог спор цацагдана. Иш сулрч хугарна.",treatment:"Эрүүл том фракцын үр сонгож тарих, ЭТС мөрдөх, үрийг Скарлет/Тебу-60 фунгицидээр ариутгаж тарих",severity:"high"},
   ]},
 };
 
@@ -203,6 +223,7 @@ export default function PlantAI(){
   const [result,setResult]=useState(null);
   const [hist,setHist]=useState([]);
   const [search,setSearch]=useState("");
+  const [encycCat,setEncycCat]=useState("disease");
   const [soilImg,setSoilImg]=useState(null);
   const [soilResult,setSoilResult]=useState(null);
   const [soilLoading,setSoilLoading]=useState(false);
@@ -671,6 +692,7 @@ JSON БҮТЭЦ:
   };
 
   const filtered=search?allD.filter(d=>(d.name+d.crop+d.pathogen+d.symptoms).toLowerCase().includes(search.toLowerCase())):allD;
+  const filteredP=search?PEST_DB.filter(p=>(p.name+p.host+p.latin+p.damage).toLowerCase().includes(search.toLowerCase())):PEST_DB;
 
   /* ═══════════ RENDER ═══════════ */
   return (
@@ -1174,8 +1196,13 @@ JSON БҮТЭЦ:
         {/* ══════ ENCYCLOPEDIA ══════ */}
         {tab==="encyclopedia"&&(
           <div className="up">
-            <div style={{marginBottom:14}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"var(--g)"}}>📚 Мэдлэгийн сан</h2><button className="btn btn-o" style={{padding:"5px 12px",fontSize:11}} onClick={()=>setTab("diagnose")}>← Буцах</button></div><p style={{fontSize:12,color:"var(--t3)",marginTop:4}}>{allD.length}+ өвчин • {Object.keys(DB).length} таримал</p></div>
-            <input className="inp" placeholder="🔍 Өвчин, таримал хайх..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:12}}/>
+            <div style={{marginBottom:14}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"var(--g)"}}>📚 Мэдлэгийн сан</h2><button className="btn btn-o" style={{padding:"5px 12px",fontSize:11}} onClick={()=>setTab("diagnose")}>← Буцах</button></div><p style={{fontSize:12,color:"var(--t3)",marginTop:4}}>{allD.length}+ өвчин • {PEST_DB.length}+ хортон шавж • {Object.keys(DB).length} таримал</p></div>
+            <div style={{display:"flex",gap:8,marginBottom:12}}>
+              <button className="btn" onClick={()=>setEncycCat("disease")} style={{flex:1,padding:"8px 12px",fontSize:12,fontWeight:600,background:encycCat==="disease"?"var(--bg3)":"transparent",color:encycCat==="disease"?"var(--g)":"var(--t3)",border:"1px solid var(--bg3)"}}>🦠 Өвчин</button>
+              <button className="btn" onClick={()=>setEncycCat("pest")} style={{flex:1,padding:"8px 12px",fontSize:12,fontWeight:600,background:encycCat==="pest"?"var(--bg3)":"transparent",color:encycCat==="pest"?"var(--g)":"var(--t3)",border:"1px solid var(--bg3)"}}>🐛 Хортон шавж</button>
+            </div>
+            <input className="inp" placeholder={encycCat==="disease"?"🔍 Өвчин, таримал хайх...":"🔍 Шавж, таримал хайх..."} value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:12}}/>
+            {encycCat==="disease"&&(<>
             <div style={{fontSize:12,color:"var(--t3)",marginBottom:10}}>{filtered.length} өвчин</div>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {filtered.slice(0,isVip?999:isPrem?40:10).map((d,i)=>(
@@ -1186,7 +1213,7 @@ JSON БҮТЭЦ:
                   </div>
                   <div style={{fontSize:11,color:"var(--t3)",fontStyle:"italic",marginBottom:5}}>{typeL[d.type]} • {d.pathogen}</div>
                   <p style={{fontSize:12,color:"var(--t2)",lineHeight:1.45,marginBottom:6}}>{d.symptoms}</p>
-                  
+
                 </div>
               ))}
               {!isVip&&filtered.length>(isPrem?40:10)&&(
@@ -1196,6 +1223,28 @@ JSON БҮТЭЦ:
                 </div>
               )}
             </div>
+            </>)}
+            {encycCat==="pest"&&(<>
+            <div style={{fontSize:12,color:"var(--t3)",marginBottom:10}}>{filteredP.length} хортон шавж</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {filteredP.slice(0,isVip?999:isPrem?40:10).map((p,i)=>(
+                <div key={i} className="glass dc">
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                    <div><span style={{fontSize:14,fontWeight:600,color:"var(--g)"}}>{p.name}</span><span style={{fontSize:11,color:"var(--t3)",marginLeft:6}}>🌾 {p.host}</span></div>
+                  </div>
+                  <div style={{fontSize:11,color:"var(--t3)",fontStyle:"italic",marginBottom:5}}>{p.order} • {p.family} • {p.latin}</div>
+                  <p style={{fontSize:12,color:"var(--t2)",lineHeight:1.45,marginBottom:6}}>{p.damage}</p>
+                  <p style={{fontSize:11,color:"var(--t3)",lineHeight:1.4}}><b style={{color:"var(--g)"}}>Тэмцэх арга:</b> {p.control}</p>
+                </div>
+              ))}
+              {!isVip&&filteredP.length>(isPrem?40:10)&&(
+                <div className="glass" style={{padding:20,textAlign:"center"}}>
+                  <p style={{color:"var(--gold)",fontWeight:600,fontSize:14,marginBottom:8}}>Бүх {filteredP.length} хортон шавж</p>
+                  <button className="btn btn-gold" onClick={()=>setModal("pricing")}>Эрх авах</button>
+                </div>
+              )}
+            </div>
+            </>)}
           </div>
         )}
 
