@@ -1,7 +1,8 @@
 import { get, put } from '@vercel/blob';
 
 const FILE = 'stats.json';
-const DEFAULTS = { farmers: 10, diagnoses: 10 };
+const FARMERS_BASE = 15; // Хэрэглэгчийн тоолуур энэ тооноос эхэлнэ (src/PlantAI.jsx-тэй ижил байх ёстой)
+const DEFAULTS = { farmers: FARMERS_BASE, diagnoses: 10 };
 
 async function readStats() {
   try {
@@ -10,7 +11,7 @@ async function readStats() {
     const text = await new Response(result.stream).text();
     const data = JSON.parse(text);
     return {
-      farmers: Number.isFinite(data.farmers) ? data.farmers : DEFAULTS.farmers,
+      farmers: Number.isFinite(data.farmers) ? Math.max(FARMERS_BASE, data.farmers) : DEFAULTS.farmers,
       diagnoses: Number.isFinite(data.diagnoses) ? data.diagnoses : DEFAULTS.diagnoses,
     };
   } catch {

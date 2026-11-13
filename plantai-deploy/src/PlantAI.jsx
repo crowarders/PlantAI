@@ -156,12 +156,48 @@ const REVIEWS=[
 /* Идэвхтэй тариаланч ба хийсэн оношлогооны тоо — бүх хэрэглэгчид нийтлэг харагдахын тулд
    серверийн /api/stats (Vercel Blob) дээр хадгална. localStorage нь offline/dev үеийн нөөц хувилбар. */
 const STATS_KEY="plantai_stats";
-const DEFAULT_STATS={farmers:10,diagnoses:10};
+const FARMERS_BASE=15;  // Хэрэглэгчийн тоолуур энэ тооноос эхэлнэ (api/stats.js-тэй ижил байх ёстой)
+const DEFAULT_STATS={farmers:FARMERS_BASE,diagnoses:10};
 const loadLocalStats=()=>{
-  try{const r=localStorage.getItem(STATS_KEY);if(r)return JSON.parse(r);}catch{}
+  try{
+    const r=localStorage.getItem(STATS_KEY);
+    if(r){const s=JSON.parse(r);return {...s,farmers:Math.max(FARMERS_BASE,Number(s.farmers)||0)};}
+  }catch{}
   return {...DEFAULT_STATS};
 };
 const saveLocalStats=(s)=>{try{localStorage.setItem(STATS_KEY,JSON.stringify(s));}catch{}};
+
+/* Тоог FARMERS_BASE-ээс эхлээд одоогийн бодит утга хүртэл жигд тоолж харуулна.
+   Нүдэнд ороход эхэлнэ; утга өсөхөд (шинэ хэрэглэгч бүртгүүлэхэд) харагдаж буй тооноос үргэлжилнэ. */
+function CountUp({to,from=FARMERS_BASE,duration=1800}){
+  const [val,setVal]=useState(from);
+  const [seen,setSeen]=useState(false);
+  const ref=useRef(null);
+  const shown=useRef(from);
+  useEffect(()=>{
+    const el=ref.current;
+    if(!el||typeof IntersectionObserver==="undefined"){setSeen(true);return;}
+    const io=new IntersectionObserver(([e])=>{if(e.isIntersecting){setSeen(true);io.disconnect();}},{threshold:.4});
+    io.observe(el);
+    return ()=>io.disconnect();
+  },[]);
+  useEffect(()=>{
+    if(!seen)return;
+    const start=shown.current,end=to;
+    const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if(start===end||reduce){shown.current=end;setVal(end);return;}
+    let raf;const t0=performance.now();
+    const tick=(now)=>{
+      const p=Math.min(1,(now-t0)/duration);
+      const v=Math.round(start+(end-start)*(1-Math.pow(1-p,3)));  // easeOutCubic
+      shown.current=v;setVal(v);
+      if(p<1)raf=requestAnimationFrame(tick);
+    };
+    raf=requestAnimationFrame(tick);
+    return ()=>cancelAnimationFrame(raf);
+  },[to,seen,duration]);
+  return <span ref={ref}>{val.toLocaleString("en-US")}</span>;
+}
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap');
@@ -996,7 +1032,7 @@ JSON БҮТЭЦ:
             {/* Сэтгэгдэл */}
             <div style={{textAlign:"center",marginBottom:16}}>
               <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"var(--t)"}}>Тариаланчид юу гэж байна</h2>
-              <p style={{fontSize:12,color:"var(--t3)",marginTop:4}}>⭐⭐⭐⭐⭐ 5,200+ хэрэглэгчийн итгэл</p>
+              <p style={{fontSize:12,color:"var(--t3)",marginTop:4}}>⭐⭐⭐⭐⭐ <CountUp to={stats.farmers}/> хэрэглэгчийн итгэл</p>
             </div>
             <div style={{display:"flex",gap:12,overflowX:"auto",paddingBottom:8,marginBottom:34}}>
               {REVIEWS.map((r,i)=>(
