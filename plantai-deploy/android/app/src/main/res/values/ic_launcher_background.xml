@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#0d3a1f</color>
+    <!-- Апп-ын бараан дэвсгэр (вэбийн bg өнгөтэй ижил) — splash/цонхны цагаан анивчихаас сэргийлнэ -->
+    <color name="plantai_bg">#060d06</color>
+</resources>

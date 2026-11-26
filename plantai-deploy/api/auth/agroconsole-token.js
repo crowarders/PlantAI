@@ -1,14 +1,12 @@
 import { readUsers } from "../_lib/users.js";
-import { getSessionEmail, signJWT } from "../_lib/auth.js";
+import { getSessionEmail, signJWT, setCors } from "../_lib/auth.js";
 import { effectiveTier } from "../_lib/users.js";
 
 const AGROCONSOLE_URL = "https://agroconsole.vercel.app";
 const HANDOFF_TTL_SEC = 10 * 60; // богино хугацаатай — зөвхөн шилжихэд ашиглана
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  setCors(req, res, "GET");
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 

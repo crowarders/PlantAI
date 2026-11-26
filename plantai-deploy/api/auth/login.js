@@ -1,13 +1,11 @@
 import { readUsers, publicUser } from "../_lib/users.js";
-import { verifyPassword, signJWT, sessionCookie } from "../_lib/auth.js";
+import { verifyPassword, signJWT, sessionCookie, setCors, isAppClient } from "../_lib/auth.js";
 
 const SESSION_DAYS = 7;
+const APP_SESSION_DAYS = 30; // гар утасны апп — долоо хоног бүр дахин нэвтрүүлэхгүй
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  setCors(req, res, "POST");
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
@@ -23,6 +21,11 @@ export default async function handler(req, res) {
   const ok = record && (await verifyPassword(String(password || ""), record.passwordHash));
   if (!ok) return res.status(401).json({ error: "И-мэйл эсвэл нууц үг буруу" });
 
+  if (isAppClient(req)) {
+    // Апп токеныг өөрөө хадгалж Bearer header-ээр илгээнэ (cookie хэрэглэхгүй)
+    const appToken = await signJWT({ email: emailNorm }, secret, APP_SESSION_DAYS * 24 * 3600);
+    return res.status(200).json({ user: publicUser(record), token: appToken });
+  }
   const token = await signJWT({ email: emailNorm }, secret, SESSION_DAYS * 24 * 3600);
   res.setHeader("Set-Cookie", sessionCookie("pa_session", token, SESSION_DAYS * 24 * 3600));
   return res.status(200).json({ user: publicUser(record) });

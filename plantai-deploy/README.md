@@ -20,3 +20,13 @@ npm run dev
 npm install -g vercel
 vercel
 ```
+
+## 📱 Android апп
+
+Ижил кодоос Capacitor-оор Android апп гаргадаг. Build хийх, утсанд турших, Play Store-д гаргах заавар:
+**[ANDROID.md](ANDROID.md)**
+
+```bash
+npm run android:apk   # debug APK
+npm run android:aab   # Play Store-д оруулах AAB
+```

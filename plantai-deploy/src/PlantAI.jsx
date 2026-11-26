@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect } from "react";
+import { App as CapApp } from "@capacitor/app";
+import { isNative, api, setToken, openExternal, API_BASE } from "./platform.js";
+import { compressImage, makeThumb } from "./image.js";
 import { WEED_DB, CONTROL_GUIDE, isGrassWeed, isParasiticWeed } from "./weedData.js";
 import { PEST_DB } from "./pestData.js";
 
@@ -155,6 +158,8 @@ const REVIEWS=[
 ];
 /* Идэвхтэй тариаланч ба хийсэн оношлогооны тоо — бүх хэрэглэгчид нийтлэг харагдахын тулд
    серверийн /api/stats (Vercel Blob) дээр хадгална. localStorage нь offline/dev үеийн нөөц хувилбар. */
+const HIST_KEY="plantai.hist.v1";
+const loadHist=()=>{try{const h=JSON.parse(localStorage.getItem(HIST_KEY)||"[]");return Array.isArray(h)?h:[];}catch{return [];}};
 const STATS_KEY="plantai_stats";
 const FARMERS_BASE=15;  // Хэрэглэгчийн тоолуур энэ тооноос эхэлнэ (api/stats.js-тэй ижил байх ёстой)
 const DEFAULT_STATS={farmers:FARMERS_BASE,diagnoses:10};
@@ -245,7 +250,43 @@ const CSS = `
 .plans{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 @media(max-width:560px){.plans{grid-template-columns:1fr;gap:14px}.plans>div{transform:none!important}}
 .navtabs::-webkit-scrollbar{display:none}
+:root{--sat:var(--safe-area-inset-top,env(safe-area-inset-top,0px));--sab:var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px));--sal:var(--safe-area-inset-left,env(safe-area-inset-left,0px));--sar:var(--safe-area-inset-right,env(safe-area-inset-right,0px))}
+html,body{background:var(--bg);overscroll-behavior-y:none}
+.nav{padding-top:calc(10px + var(--sat));padding-left:calc(16px + var(--sal));padding-right:calc(16px + var(--sar))}
+.nav-mob,.tabbar,.mob-only{display:none}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:60;background:rgba(6,13,6,.95);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);padding:6px calc(4px + var(--sar)) calc(6px + var(--sab)) calc(4px + var(--sal))}
+.tabbar button{flex:1;background:none;border:none;color:var(--t3);font-family:inherit;font-size:10.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tabbar .ti{font-size:20px;line-height:1;filter:grayscale(.7);opacity:.7;transition:.2s}
+.tabbar button.on{color:var(--g)}
+.tabbar button.on .ti{filter:none;opacity:1;transform:translateY(-1px)}
+.avatar{width:34px;height:34px;border-radius:50%;border:1px solid var(--border2);background:linear-gradient(135deg,var(--bg3),var(--bg2));color:var(--g);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;flex-shrink:0}
+@media(max-width:640px){
+  .nav-desk{display:none!important}
+  .nav-mob,.tabbar,.mob-only{display:flex}
+  .app{padding-bottom:calc(68px + var(--sab))}
+  .hero{padding:16px 16px 12px!important}
+  .hero .hero-big{display:none!important}
+  .hero .hero-tag{font-size:14px!important;margin-top:0!important}
+  .atabs{display:grid!important;grid-template-columns:1fr 1fr;gap:8px!important}
+  .atabs>button{max-width:none!important;padding:11px 8px!important;font-size:12.5px!important;line-height:1.25}
+  .upload{padding:22px 14px}
+  .chatwrap{height:calc(100dvh - 165px - var(--sat) - var(--sab))!important;min-height:300px!important} /* дээд цэс 55 + доод зай 36 + доод цэс 68 + 6 нөөц */
+  .overlay{align-items:flex-end;padding:0}
+  .overlay>.glass{max-width:none!important;border-radius:20px 20px 0 0!important;max-height:90dvh!important;overflow-y:auto;padding-bottom:calc(24px + var(--sab))!important}
+}
 `;
+
+/* Утсан дээр: камераар шууд авах эсвэл галерейгаас сонгох (desktop-д .upload дээр дарна) */
+function PhotoButtons({onPick,galleryRef}){
+  const camRef=useRef(null);
+  return (
+    <div className="mob-only" style={{gap:8,marginTop:14}} onClick={e=>e.stopPropagation()}>
+      <input type="file" ref={camRef} accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{onPick(e.target.files?.[0]);e.target.value="";}}/>
+      <button className="btn btn-g" style={{flex:1,padding:"11px 10px",fontSize:13}} onClick={()=>camRef.current?.click()}>📷 Зураг авах</button>
+      <button className="btn btn-o" style={{flex:1,padding:"11px 10px",fontSize:13}} onClick={()=>galleryRef.current?.click()}>🖼 Галерей</button>
+    </div>
+  );
+}
 
 export default function PlantAI(){
   const [user,setUser]=useState(null);
@@ -257,7 +298,8 @@ export default function PlantAI(){
   const [img,setImg]=useState(null);
   const [loading,setLoading]=useState(false);
   const [result,setResult]=useState(null);
-  const [hist,setHist]=useState([]);
+  const [hist,setHist]=useState(loadHist);
+  useEffect(()=>{try{localStorage.setItem(HIST_KEY,JSON.stringify(hist));}catch{/* дүүрсэн */}},[hist]);
   const [search,setSearch]=useState("");
   const [encycCat,setEncycCat]=useState("disease");
   const [soilImg,setSoilImg]=useState(null);
@@ -292,8 +334,9 @@ export default function PlantAI(){
   /* Сервер дэх session cookie-оор нэвтэрсэн эсэхийг сэргээнэ */
   useEffect(()=>{ (async()=>{
     try{
-      const r=await fetch("/api/auth/me",{credentials:"include"});
+      const r=await api("/api/auth/me");
       if(r.ok){const data=await r.json();setUser(data.user);}
+      else if(r.status===401&&isNative)setToken(null);
     }catch{ /* оффлайн/локал dev үед нэвтрэлт сэргээгдэхгүй, хэвийн */ }
     setAuthLoading(false);
   })(); },[]);
@@ -301,7 +344,7 @@ export default function PlantAI(){
   const [stats,setStats]=useState(loadLocalStats);
   useEffect(()=>{ (async()=>{
     try{
-      const r=await fetch("/api/stats");
+      const r=await api("/api/stats");
       if(!r.ok)throw new Error("bad status");
       const data=await r.json();
       if(Number.isFinite(data.farmers)&&Number.isFinite(data.diagnoses)){setStats(data);saveLocalStats(data);}
@@ -309,7 +352,7 @@ export default function PlantAI(){
   })(); },[]);
   const bumpStat=(key)=>{
     setStats(prev=>{const next={...prev,[key]:prev[key]+1};saveLocalStats(next);return next;});
-    fetch("/api/stats",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key})})
+    api("/api/stats",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key})})
       .then(r=>r.ok?r.json():null)
       .then(data=>{if(data&&Number.isFinite(data.farmers)&&Number.isFinite(data.diagnoses)){setStats(data);saveLocalStats(data);}})
       .catch(()=>{});
@@ -324,11 +367,12 @@ export default function PlantAI(){
   const login=async()=>{
     setErr("");
     try{
-      const r=await fetch("/api/auth/login",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:form.email,password:form.pw})});
+      const r=await api("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:form.email,password:form.pw})});
       const data=await r.json();
       if(!r.ok)return setErr(data.error||"Нэвтрэхэд алдаа гарлаа");
+      if(data.token)setToken(data.token);
       setUser(data.user);setModal(null);
-      if(data.user.tier==="free")setTimeout(()=>setModal("pricing"),600);
+      if(data.user.tier==="free"&&!isNative)setTimeout(()=>setModal("pricing"),600);
     }catch(e){setErr("Холболтын алдаа: интернэт холболтоо шалгана уу");}
   };
   const register=async()=>{
@@ -336,17 +380,34 @@ export default function PlantAI(){
     if(form.pw.length<8)return setErr("Нууц үг 8+ тэмдэгт");
     setErr("");
     try{
-      const r=await fetch("/api/auth/register",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:form.email,password:form.pw,name:form.name})});
+      const r=await api("/api/auth/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:form.email,password:form.pw,name:form.name})});
       const data=await r.json();
       if(!r.ok)return setErr(data.error||"Бүртгэхэд алдаа гарлаа");
+      if(data.token)setToken(data.token);
       setUser(data.user);setModal(null);
       bumpStat("farmers");
-      setTimeout(()=>setModal("pricing"),600);
+      if(!isNative)setTimeout(()=>setModal("pricing"),600);
     }catch(e){setErr("Холболтын алдаа: интернэт холболтоо шалгана уу");}
   };
   const logout=async()=>{
-    try{await fetch("/api/auth/logout",{method:"POST",credentials:"include"});}catch{}
-    setUser(null);setResult(null);setHist([]);
+    try{await api("/api/auth/logout",{method:"POST",credentials:"include"});}catch{}
+    setToken(null);setUser(null);setResult(null);setHist([]);setModal(null);
+  };
+
+  /* ═══ БҮРТГЭЛ УСТГАХ — Google Play-ийн шаардлага (апп дотор + вэбээр) ═══ */
+  const [delPw,setDelPw]=useState("");
+  const [delErr,setDelErr]=useState("");
+  const [delBusy,setDelBusy]=useState(false);
+  const deleteAccount=async()=>{
+    if(!delPw)return setDelErr("Нууц үгээ оруулна уу");
+    setDelBusy(true);setDelErr("");
+    try{
+      const r=await api("/api/auth/delete-account",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:delPw})});
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok){setDelErr(data.error||"Устгахад алдаа гарлаа");setDelBusy(false);return;}
+      setToken(null);setUser(null);setResult(null);setHist([]);setDelPw("");setModal("deleted");
+    }catch(e){setDelErr("Холболтын алдаа: интернэт холболтоо шалгана уу");}
+    setDelBusy(false);
   };
 
   /* ═══ ХУДАЛДАН АВАХ УРСГАЛ — гар аргаар шилжүүлэг, admin баталгаажуулна ═══ */
@@ -354,7 +415,7 @@ export default function PlantAI(){
     if(!user){setModal("login");return;}
     setCheckout(plan);setPayState("form");setPayTab("bank");setCheckoutErr("");setModal("checkout");
     try{
-      const r=await fetch("/api/vip/info",{credentials:"include"});
+      const r=await api("/api/vip/info");
       const data=await r.json();
       if(r.ok)setBankData(data.bank);
     }catch{}
@@ -363,7 +424,7 @@ export default function PlantAI(){
     if(!checkout)return;
     setPayState("processing");setCheckoutErr("");
     try{
-      const r=await fetch("/api/vip/request",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:checkout.id,billing})});
+      const r=await api("/api/vip/request",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:checkout.id,billing})});
       const data=await r.json();
       if(!r.ok){setCheckoutErr(data.error||"Алдаа гарлаа");setPayState("form");return;}
       setUser(data.user);if(data.bank)setBankData(data.bank);
@@ -383,10 +444,19 @@ export default function PlantAI(){
     if(!user){setModal("login");return;}
     if(user.tier!=="vip"){setModal("pricing");return;}
     setAgroMsg("");
+    if(isNative){
+      try{
+        const r=await api("/api/auth/agroconsole-token");
+        const data=await r.json();
+        if(r.ok&&data.url)openExternal(data.url);
+        else{setAgroMsg(data.error||"АгроКонсол руу шилжихэд алдаа гарлаа");setTimeout(()=>setAgroMsg(""),4000);}
+      }catch(e){setAgroMsg("Холболтын алдаа");setTimeout(()=>setAgroMsg(""),4000);}
+      return;
+    }
     // Клик дотор шууд tab нээнэ — popup blocker await-ийн дараах window.open-г блоклодог тул
     const win=window.open("","_blank");
     try{
-      const r=await fetch("/api/auth/agroconsole-token",{credentials:"include"});
+      const r=await api("/api/auth/agroconsole-token");
       const data=await r.json();
       if(r.ok&&data.url){if(win)win.location.href=data.url;}
       else{if(win)win.close();setAgroMsg(data.error||"АгроКонсол руу шилжихэд алдаа гарлаа");setTimeout(()=>setAgroMsg(""),4000);}
@@ -406,7 +476,7 @@ export default function PlantAI(){
     const sys="Чи Монголын туршлагатай агрономч зөвлөх AI. Тариаланчдад ургамал тариалах, өвчин хортонтой тэмцэх, бордоо, усалгаа, хөрс, цаг агаар, сорт сонголт, ургац хадгалах талаар практик, ойлгомжтой зөвлөгөө өгдөг. Монголын богино ургалтын улирал, хүйтэн уур амьсгал, бүс нутгийн онцлогийг харгалзана. ЗӨВХӨН Монгол хэлээр, товч бөгөөд тодорхой хариулна. Химийн бэлдмэл дурдвал нэр, тун, аюулгүй ажиллагааг заана. Шаардлагатай үед 1) 2) 3) гэж дугаарлаж бич."+tierNote;
     try{
       const msgs=next.slice(-12).map(m=>({role:m.role,content:m.text}));
-      const resp=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:1500,thinking:{type:"disabled"},system:sys,messages:msgs})});
+      const resp=await api("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:1500,thinking:{type:"disabled"},system:sys,messages:msgs})});
       if(!resp.ok){setChat(c=>[...c,{role:"assistant",text:"Сервер алдаа ("+resp.status+"). Дахин оролдоно уу."}]);setChatLoading(false);return;}
       const data=await resp.json();
       if(data.error){setChat(c=>[...c,{role:"assistant",text:"Алдаа: "+(data.error.message||"дахин оролдоно уу")}]);setChatLoading(false);return;}
@@ -417,11 +487,11 @@ export default function PlantAI(){
   };
 
   const resetSoil=()=>{setSoilImg(null);setSoilResult(null);if(soilRef.current)soilRef.current.value="";};
-  const handleSoilImage=(file)=>{if(!file)return;const r=new FileReader();r.onload=(ev)=>{setSoilImg(ev.target.result);setSoilResult(null);};r.readAsDataURL(file);};
+  const handleSoilImage=async(file)=>{if(!file)return;setSoilImg(await compressImage(file));setSoilResult(null);};
   const resetWeed=()=>{setWeedImg(null);setWeedResult(null);if(weedRef.current)weedRef.current.value="";};
-  const handleWeedImage=(file)=>{if(!file)return;const r=new FileReader();r.onload=(ev)=>{setWeedImg(ev.target.result);setWeedResult(null);};r.readAsDataURL(file);};
+  const handleWeedImage=async(file)=>{if(!file)return;setWeedImg(await compressImage(file));setWeedResult(null);};
   const resetPest=()=>{setPestImg(null);setPestResult(null);if(pestRef.current)pestRef.current.value="";};
-  const handlePestImage=(file)=>{if(!file)return;const r=new FileReader();r.onload=(ev)=>{setPestImg(ev.target.result);setPestResult(null);};r.readAsDataURL(file);};
+  const handlePestImage=async(file)=>{if(!file)return;setPestImg(await compressImage(file));setPestResult(null);};
 
   const analyzeSoil=async()=>{
     if(!soilImg)return;
@@ -444,7 +514,7 @@ export default function PlantAI(){
       setSoilProgress(attempt===1?"AI хөрсийг шинжилж байна...":"Дахин оролдож байна ("+attempt+"/3)...");
       try{
         const extra=attempt>1?"\nЗӨВХӨН JSON. Markdown бичихгүй!":"";
-        const resp=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:3000,thinking:{type:"disabled"},system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
+        const resp=await api("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:3000,thinking:{type:"disabled"},system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
         if(!resp.ok){fallback="Сервер алдаа: "+resp.status;continue;}
         const data=await resp.json();
         if(data.error){fallback=data.error.message||"API алдаа";continue;}
@@ -499,7 +569,7 @@ export default function PlantAI(){
       setWeedProgress(attempt===1?"AI хог ургамлыг таньж байна...":"Дахин оролдож байна ("+attempt+"/3)...");
       try{
         const extra=attempt>1?"\nЗӨВХӨН JSON. Markdown бичихгүй!":"";
-        const resp=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:3000,thinking:{type:"disabled"},system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
+        const resp=await api("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:3000,thinking:{type:"disabled"},system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
         if(!resp.ok){fallback="Сервер алдаа: "+resp.status;continue;}
         const data=await resp.json();
         if(data.error){fallback=data.error.message||"API алдаа";continue;}
@@ -547,7 +617,7 @@ export default function PlantAI(){
       setPestProgress(attempt===1?"AI хортон шавжийг таньж байна...":"Дахин оролдож байна ("+attempt+"/3)...");
       try{
         const extra=attempt>1?"\nЗӨВХӨН JSON. Markdown бичихгүй!":"";
-        const resp=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:3000,thinking:{type:"disabled"},system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
+        const resp=await api("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:3000,thinking:{type:"disabled"},system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
         if(!resp.ok){fallback="Сервер алдаа: "+resp.status;continue;}
         const data=await resp.json();
         if(data.error){fallback=data.error.message||"API алдаа";continue;}
@@ -612,11 +682,9 @@ export default function PlantAI(){
     </div>;
   };
 
-  const handleImage=(file)=>{
+  const handleImage=async(file)=>{
     if(!file)return;
-    const r=new FileReader();
-    r.onload=(ev)=>{setImg(ev.target.result);setResult(null);};
-    r.readAsDataURL(file);
+    setImg(await compressImage(file));setResult(null);
   };
 
   /* robust JSON extractor - handles markdown fences, trailing commas, malformed JSON */
@@ -716,7 +784,7 @@ JSON БҮТЭЦ:
       setProgress(attempt===1?"AI зургийг шинжилж байна...":attempt===2?"Дахин оролдож байна ("+attempt+"/"+maxAttempts+")...":"Сүүлийн оролдлого...");
       try{
         const extraNote=attempt>1?"\n\nАнхааруулга: Зөвхөн JSON объект. { } хаалтаар эхэлж төгсөнө. Markdown, тайлбар бичихгүй. treatment болон prevention заавал бөглөнө!":"";
-        const resp=await fetch("/api/chat",{
+        const resp=await api("/api/chat",{
           method:"POST",
           headers:{"Content-Type":"application/json"},
           body:JSON.stringify({
@@ -766,7 +834,8 @@ JSON БҮТЭЦ:
         source:"ai",
       };
       setResult(res);
-      setHist(h=>[{...res,date:new Date().toLocaleString(),thumb:img},...h].slice(0,30));
+      const thumb=await makeThumb(img);
+      setHist(h=>[{...res,date:new Date().toLocaleString(),thumb},...h].slice(0,30));
       bumpStat("diagnoses");
     }else{
       // Fallback result with meaningful info
@@ -785,6 +854,22 @@ JSON БҮТЭЦ:
   const filtered=search?allD.filter(d=>(d.name+d.crop+d.pathogen+d.symptoms).toLowerCase().includes(search.toLowerCase())):allD;
   const filteredP=search?PEST_DB.filter(p=>(p.name+p.host+p.latin+p.damage).toLowerCase().includes(search.toLowerCase())):PEST_DB;
 
+  /* Android-ын "буцах" товч: цонх хаах → үндсэн таб → зураг цэвэрлэх → апп-аас гарах */
+  const backRef=useRef(null);
+  backRef.current=()=>{
+    if(modal){setModal(null);return;}
+    if(tab!=="diagnose"){setTab("diagnose");return;}
+    if(result||img){resetDiag();return;}
+    CapApp.exitApp();
+  };
+  useEffect(()=>{
+    if(!isNative)return;
+    const h=CapApp.addListener("backButton",()=>backRef.current?.());
+    return ()=>{h.then(x=>x.remove());};
+  },[]);
+  useEffect(()=>{window.scrollTo(0,0);},[tab]);
+  const initial=(user?.name||"?").trim().charAt(0).toUpperCase();
+
   /* ═══════════ RENDER ═══════════ */
   return (
     <div className="app">
@@ -797,7 +882,7 @@ JSON БҮТЭЦ:
           <span style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:"var(--g)",cursor:"pointer"}} onClick={()=>setTab("diagnose")}>PlantAI</span>
           {isPrem&&<span className={isVip?"vbadge":"pbadge"}>{isVip?"VIP":"PREMIUM"}</span>}
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:4}}>
+        <div className="nav-desk" style={{display:"flex",alignItems:"center",gap:4}}>
           <button className="btn" onClick={()=>setTab("chat")} style={{padding:"5px 10px",fontSize:11,background:tab==="chat"?"var(--bg3)":"transparent",color:tab==="chat"?"var(--g)":"var(--t3)",border:"none"}}>💬 Зөвлөх</button>
           <button className="btn" onClick={()=>setTab("calendar")} style={{padding:"5px 10px",fontSize:11,background:tab==="calendar"?"var(--bg3)":"transparent",color:tab==="calendar"?"var(--g)":"var(--t3)",border:"none"}}>🌤 Хуанли</button>
           <button className="btn" onClick={()=>setTab("encyclopedia")} style={{padding:"5px 10px",fontSize:11,background:tab==="encyclopedia"?"var(--bg3)":"transparent",color:tab==="encyclopedia"?"var(--g)":"var(--t3)",border:"none"}}>📚 Лавлах</button>
@@ -805,7 +890,7 @@ JSON БҮТЭЦ:
           <div style={{width:1,height:16,background:"var(--border)",margin:"0 4px"}}/>
           {user?(
             <>
-              <span style={{fontSize:12,color:"var(--t2)"}}>{user.name}</span>
+              <span onClick={()=>setModal("account")} title="Бүртгэл" style={{fontSize:12,color:"var(--t2)",cursor:"pointer"}}>{user.name}</span>
               {user?.vip?.status==="pending"&&<span style={{fontSize:10,fontWeight:600,color:"var(--gold)",background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.25)",borderRadius:8,padding:"3px 8px"}}>⏳ Хүлээгдэж байна</span>}
               {!isPrem&&user?.vip?.status!=="pending"&&<button className="btn btn-gold" style={{padding:"5px 10px",fontSize:10}} onClick={()=>setModal("pricing")}>⭐ Эрх</button>}
               {isPrem&&!isVip&&<button className="btn" style={{padding:"5px 10px",fontSize:10,background:"linear-gradient(135deg,#a78bfa,#7c3aed)",color:"#fff"}} onClick={()=>setModal("pricing")}>💎 VIP</button>}
@@ -823,18 +908,25 @@ JSON БҮТЭЦ:
             {agroMsg&&<div style={{position:"absolute",top:"calc(100% + 6px)",right:0,background:"var(--bg2)",border:"1px solid var(--red)",borderRadius:8,padding:"6px 10px",fontSize:11,color:"var(--red)",whiteSpace:"nowrap",zIndex:20}}>{agroMsg}</div>}
           </div>
         </div>
+        <div className="nav-mob" style={{alignItems:"center",gap:8}}>
+          {user?(
+            <button className="avatar" onClick={()=>setModal("account")} aria-label="Бүртгэл">{initial}</button>
+          ):(
+            <button className="btn btn-g" style={{padding:"7px 16px",fontSize:12}} onClick={()=>{setModal("login");setErr("");setForm({name:"",email:"",pw:""});}}>Нэвтрэх</button>
+          )}
+        </div>
       </div>
 
       {/* HERO */}
-      {(tab==="diagnose"||tab==="soil"||tab==="weed"||tab==="pest")&&<div className="up" style={{position:"relative",textAlign:"center",padding:"34px 16px 16px",overflow:"hidden"}}>
+      {(tab==="diagnose"||tab==="soil"||tab==="weed"||tab==="pest")&&<div className="up hero" style={{position:"relative",textAlign:"center",padding:"34px 16px 16px",overflow:"hidden"}}>
         <div className="orb" style={{width:260,height:260,background:"rgba(74,222,128,.16)",top:-90,left:"12%"}}/>
         <div className="orb" style={{width:220,height:220,background:"rgba(251,191,36,.12)",top:-60,right:"10%",animationDelay:"2s"}}/>
         <div style={{position:"relative",zIndex:1}}>
-          <div className="float" style={{fontSize:52,lineHeight:1}}>🌱</div>
-          <h1 className="gradtxt" style={{fontFamily:"'Playfair Display',serif",fontSize:38,fontWeight:700,marginTop:4}}>PlantAI</h1>
-          <p style={{color:"var(--t)",fontSize:16,fontWeight:600,marginTop:8,maxWidth:520,marginInline:"auto"}}>Ургамлын өвчний зургийг оруулж өвчнийг нь оношил, хэрхэн эмчлэх талаар мэдэж аваарай</p>
-          <p style={{color:"var(--t2)",fontSize:13,marginTop:6}}>Монголын тариаланчдын AI туслах • Хиймэл оюунаар 10 секундэд</p>
-          <div style={{display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",marginTop:14}}>
+          <div className="float hero-big" style={{fontSize:52,lineHeight:1}}>🌱</div>
+          <h1 className="gradtxt hero-big" style={{fontFamily:"'Playfair Display',serif",fontSize:38,fontWeight:700,marginTop:4}}>PlantAI</h1>
+          <p className="hero-tag" style={{color:"var(--t)",fontSize:16,fontWeight:600,marginTop:8,maxWidth:520,marginInline:"auto"}}>Ургамлын өвчний зургийг оруулж өвчнийг нь оношил, хэрхэн эмчлэх талаар мэдэж аваарай</p>
+          <p className="hero-big" style={{color:"var(--t2)",fontSize:13,marginTop:6}}>Монголын тариаланчдын AI туслах • Хиймэл оюунаар 10 секундэд</p>
+          <div className="hero-big" style={{display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",marginTop:14}}>
             <span className="chip">✅ {allD.length}+ өвчин оношилдог</span>
             <span className="chip">⚡ 10 секундэд хариу</span>
             <span className="chip">🌐 Бүрэн Монголоор</span>
@@ -844,7 +936,7 @@ JSON БҮТЭЦ:
       </div>}
 
       {/* TABS */}
-      {(tab==="diagnose"||tab==="soil"||tab==="weed"||tab==="pest")&&<div style={{display:"flex",justifyContent:"center",gap:8,padding:"0 16px 14px",flexWrap:"wrap"}}>
+      {(tab==="diagnose"||tab==="soil"||tab==="weed"||tab==="pest")&&<div className="atabs" style={{display:"flex",justifyContent:"center",gap:8,padding:"0 16px 14px",flexWrap:"wrap"}}>
         <button className="btn" onClick={()=>setTab("diagnose")} style={{flex:1,maxWidth:220,padding:"12px 16px",fontSize:14,fontWeight:600,background:tab==="diagnose"?"var(--g3)":"var(--bg3)",color:tab==="diagnose"?"#fff":"var(--t3)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>🔬 Ургамлын өвчин оношлогоо</button>
         <button className="btn" onClick={()=>setTab("soil")} style={{flex:1,maxWidth:220,padding:"12px 16px",fontSize:14,fontWeight:600,background:tab==="soil"?"linear-gradient(135deg,#854d0e,#a16207)":"var(--bg3)",color:tab==="soil"?"#fff":"var(--t3)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>🌍 Хөрсний шинжилгээ</button>
         <button className="btn" onClick={()=>setTab("weed")} style={{flex:1,maxWidth:220,padding:"12px 16px",fontSize:14,fontWeight:600,background:tab==="weed"?"linear-gradient(135deg,#b91c1c,#dc2626)":"var(--bg3)",color:tab==="weed"?"#fff":"var(--t3)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>🍃 Хог ургамал таних</button>
@@ -874,6 +966,7 @@ JSON БҮТЭЦ:
                       <div style={{fontSize:48,marginBottom:8}}>📷</div>
                       <div style={{color:"var(--g)",fontSize:16,fontWeight:600,marginBottom:4}}>Ургамлын зургаа оруулна уу</div>
                       <div style={{color:"var(--t3)",fontSize:12}}>Өвчилсөн навч, иш, жимс, булцууны зураг</div>
+                      <PhotoButtons onPick={handleImage} galleryRef={fRef}/>
                     </div>
                   )}
                 </div>
@@ -1050,8 +1143,8 @@ JSON БҮТЭЦ:
               ))}
             </div>
 
-            {/* Эрх авах CTA */}
-            {!isPrem&&(
+            {/* Эрх авах CTA — апп дотор харуулахгүй (Google Play Payments бодлого) */}
+            {!isPrem&&!isNative&&(
               <div className="glass hovlift" style={{padding:"26px 20px",textAlign:"center",background:"linear-gradient(135deg,rgba(74,222,128,.08),rgba(251,191,36,.06))",borderColor:"var(--border2)"}}>
                 <div style={{fontSize:30,marginBottom:6}}>⭐</div>
                 <h3 style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"var(--t)",marginBottom:6}}>Хязгааргүй ашиглах уу?</h3>
@@ -1083,6 +1176,7 @@ JSON БҮТЭЦ:
                       <div style={{fontSize:48,marginBottom:8}}>🌍</div>
                       <div style={{color:"var(--g)",fontSize:16,fontWeight:600,marginBottom:4}}>Хөрсний зургаа оруулна уу</div>
                       <div style={{color:"var(--t3)",fontSize:12}}>Талбайн хөрс, хагшаас, малтсан хөрсний зүсэлтийн зураг</div>
+                      <PhotoButtons onPick={handleSoilImage} galleryRef={soilRef}/>
                     </div>
                   )}
                 </div>
@@ -1204,6 +1298,7 @@ JSON БҮТЭЦ:
                       <div style={{fontSize:48,marginBottom:8}}>🍃</div>
                       <div style={{color:"var(--g)",fontSize:16,fontWeight:600,marginBottom:4}}>Хог ургамлын зургаа оруулна уу</div>
                       <div style={{color:"var(--t3)",fontSize:12}}>Талбай дахь хог ургамлын навч, иш, цэцгийн ойрын зураг</div>
+                      <PhotoButtons onPick={handleWeedImage} galleryRef={weedRef}/>
                     </div>
                   )}
                 </div>
@@ -1305,6 +1400,7 @@ JSON БҮТЭЦ:
                       <div style={{fontSize:48,marginBottom:8}}>🐛</div>
                       <div style={{color:"var(--g)",fontSize:16,fontWeight:600,marginBottom:4}}>Хортон шавжийн зургаа оруулна уу</div>
                       <div style={{color:"var(--t3)",fontSize:12}}>Шавж өөрөө эсвэл түүний учруулсан гэмтлийн (навчны нүх, толбо) ойрын зураг</div>
+                      <PhotoButtons onPick={handlePestImage} galleryRef={pestRef}/>
                     </div>
                   )}
                 </div>
@@ -1464,7 +1560,7 @@ JSON БҮТЭЦ:
 
         {/* ══════ AI АГРОНОМЧ ЧАТ ══════ */}
         {tab==="chat"&&(
-          <div className="up" style={{display:"flex",flexDirection:"column",height:"calc(100vh - 150px)",minHeight:420}}>
+          <div className="up chatwrap" style={{display:"flex",flexDirection:"column",height:"calc(100vh - 150px)",minHeight:420}}>
             <div style={{marginBottom:12}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"var(--g)"}}>💬 AI Агрономч зөвлөх</h2>{chat.length>0&&<button className="btn btn-o" style={{padding:"5px 12px",fontSize:11}} onClick={()=>setChat([])}>🗑 Цэвэрлэх</button>}</div><p style={{fontSize:12,color:"var(--t3)",marginTop:4}}>Тариалалт, өвчин хортон, бордоо, усалгааны талаар асуугаарай</p></div>
 
             <div className="glass" style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:12,marginBottom:10}}>
@@ -1577,8 +1673,8 @@ JSON БҮТЭЦ:
         })()}
       </div>
 
-      {/* ══════ FOOTER ══════ */}
-      <div style={{borderTop:"1px solid var(--border)",background:"var(--bg2)",marginTop:20}}>
+      {/* ══════ FOOTER ══════ (чат бүтэн өндөртэй дэлгэц тул тэнд харуулахгүй) */}
+      {tab!=="chat"&&<div style={{borderTop:"1px solid var(--border)",background:"var(--bg2)",marginTop:20}}>
         <div style={{maxWidth:680,margin:"0 auto",padding:"28px 16px 34px"}}>
           <div style={{display:"flex",flexWrap:"wrap",gap:24,justifyContent:"space-between"}}>
             <div style={{maxWidth:260}}>
@@ -1610,7 +1706,15 @@ JSON БҮТЭЦ:
           </div>
           <div style={{borderTop:"1px solid var(--border)",marginTop:22,paddingTop:16,textAlign:"center",fontSize:11,color:"var(--t3)"}}>© {new Date().getFullYear()} PlantAI · Монголд ❤️-ээр хийв</div>
         </div>
-      </div>
+      </div>}
+
+      {/* ══════ УТАСНЫ ДООД ЦЭС ══════ */}
+      <nav className="tabbar">
+        {[["diagnose","🔬","Оношлох"],["chat","💬","Зөвлөх"],["encyclopedia","📚","Лавлах"],["calendar","🌤","Хуанли"],["history","📋","Түүх"]].map(([k,ic,l])=>{
+          const on=k==="diagnose"?["diagnose","soil","weed","pest"].includes(tab):tab===k;
+          return <button key={k} className={on?"on":""} onClick={()=>on?window.scrollTo({top:0,behavior:"smooth"}):setTab(k)}><span className="ti">{ic}</span>{l}</button>;
+        })}
+      </nav>
 
       {/* ══════ LOGIN ══════ */}
       {modal==="login"&&(
@@ -1623,6 +1727,54 @@ JSON БҮТЭЦ:
             <button className="btn btn-g" style={{width:"100%"}} onClick={login}>Нэвтрэх</button>
             <p style={{textAlign:"center",marginTop:10,fontSize:12,color:"var(--t3)"}}>Шинэ? <span style={{color:"var(--g)",cursor:"pointer"}} onClick={()=>{setModal("register");setErr("");}}>Бүртгүүлэх</span></p>
 
+          </div>
+        </div>
+      )}
+
+      {/* ══════ БҮРТГЭЛ ══════ */}
+      {modal==="account"&&user&&(
+        <div className="overlay" onClick={()=>setModal(null)}>
+          <div className="glass up" style={{padding:24,maxWidth:380,width:"100%"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+              <div className="avatar" style={{width:48,height:48,fontSize:20,cursor:"default"}}>{initial}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:16,color:"var(--t)"}}>{user.name}</div>
+                <div style={{fontSize:12,color:"var(--t3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email}</div>
+              </div>
+              {isPrem?<span className={isVip?"vbadge":"pbadge"}>{isVip?"VIP":"PREMIUM"}</span>:<span className="sev" style={{background:"var(--bg3)",color:"var(--t3)"}}>Энгийн</span>}
+            </div>
+            {user?.vip?.status==="pending"&&<div style={{fontSize:12,fontWeight:600,color:"var(--gold)",background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.25)",borderRadius:10,padding:"8px 12px",marginBottom:12,textAlign:"center"}}>⏳ Эрхийн хүсэлт баталгаажуулалт хүлээж байна</div>}
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {!isVip&&user?.vip?.status!=="pending"&&<button className="btn btn-gold" onClick={()=>setModal("pricing")}>{isPrem?"💎 VIP эрх":"⭐ Premium / VIP эрх"}</button>}
+              <button className="btn btn-o" onClick={openAgroConsole} style={{color:"var(--gold)",borderColor:"rgba(251,191,36,.3)"}}>🚁 АгроКонсол{!isVip&&" 🔒"}</button>
+              {agroMsg&&<div style={{fontSize:12,color:"var(--red)",textAlign:"center"}}>{agroMsg}</div>}
+              <button className="btn btn-o" onClick={logout}>Гарах</button>
+            </div>
+            <div style={{borderTop:"1px solid var(--border)",marginTop:18,paddingTop:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <button onClick={()=>openExternal(API_BASE+"/privacy.html")} style={{background:"none",border:"none",color:"var(--t3)",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Нууцлалын бодлого</button>
+              <button onClick={()=>{setDelPw("");setDelErr("");setModal("delete");}} style={{background:"none",border:"none",color:"var(--red)",fontSize:12,cursor:"pointer",fontFamily:"inherit",opacity:.85}}>Бүртгэлээ устгах</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {modal==="delete"&&user&&(
+        <div className="overlay" onClick={()=>!delBusy&&setModal(null)}>
+          <div className="glass up" style={{padding:24,maxWidth:380,width:"100%"}} onClick={e=>e.stopPropagation()}>
+            <h2 style={{fontSize:19,color:"var(--red)",marginBottom:8,textAlign:"center"}}>Бүртгэлээ устгах уу?</h2>
+            <p style={{fontSize:13,color:"var(--t2)",lineHeight:1.6,marginBottom:12}}><b>{user.email}</b> бүртгэл болон түүнд хамаарах Premium/VIP эрх бүрмөсөн устгагдана. Энэ үйлдлийг буцаах боломжгүй.</p>
+            {delErr&&<div style={{background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,padding:"6px 10px",marginBottom:10,fontSize:12,color:"var(--red)"}}>{delErr}</div>}
+            <input className="inp" type="password" placeholder="Баталгаажуулах нууц үг" value={delPw} onChange={e=>setDelPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&deleteAccount()} style={{marginBottom:12}}/>
+            <button className="btn" disabled={delBusy} onClick={deleteAccount} style={{width:"100%",background:"var(--red)",color:"#fff"}}>{delBusy?"Устгаж байна...":"Бүрмөсөн устгах"}</button>
+            <button className="btn btn-o" disabled={delBusy} onClick={()=>setModal("account")} style={{width:"100%",marginTop:8}}>Болих</button>
+          </div>
+        </div>
+      )}
+      {modal==="deleted"&&(
+        <div className="overlay" onClick={()=>setModal(null)}>
+          <div className="glass up" style={{padding:26,maxWidth:360,width:"100%",textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:36,marginBottom:6}}>✅</div>
+            <p style={{fontSize:14,color:"var(--t)"}}>Таны бүртгэл устгагдлаа.</p>
+            <button className="btn btn-g" style={{width:"100%",marginTop:16}} onClick={()=>setModal(null)}>Ойлголоо</button>
           </div>
         </div>
       )}
@@ -1642,8 +1794,22 @@ JSON БҮТЭЦ:
         </div>
       )}
 
+      {/* ══════ PRICING (апп) — Google Play Billing-гүй тул гадны төлбөр рүү чиглүүлэхгүй ══════ */}
+      {modal==="pricing"&&isNative&&(
+        <div className="overlay" onClick={()=>setModal(null)}>
+          <div className="glass up" style={{padding:26,maxWidth:380,width:"100%",textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:40,marginBottom:6}}>⭐</div>
+            <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:21,color:"var(--gold)",marginBottom:8}}>Premium / VIP боломж</h2>
+            <p style={{fontSize:13,color:"var(--t2)",lineHeight:1.6}}>Дэлгэрэнгүй оношлогоо, дифференциал шинжилгээ, АгроКонсол зэрэг нэмэлт боломжууд Premium болон VIP эрхтэй гишүүдэд нээгдэнэ.</p>
+            <p style={{fontSize:12,color:"var(--t3)",marginTop:10}}>{user?("Таны бүртгэл ("+user.email+") "+(user.vip?.status==="pending"?"баталгаажуулалт хүлээж байна.":"одоогоор энгийн эрхтэй байна.")):"Эрхтэй бол бүртгэлтэй имэйлээрээ нэвтэрнэ үү."}</p>
+            {!user&&<button className="btn btn-g" style={{width:"100%",marginTop:14}} onClick={()=>{setModal("login");setErr("");}}>Нэвтрэх</button>}
+            <button className="btn btn-o" style={{width:"100%",marginTop:8}} onClick={()=>setModal(null)}>Хаах</button>
+          </div>
+        </div>
+      )}
+
       {/* ══════ PRICING ══════ */}
-      {modal==="pricing"&&(
+      {modal==="pricing"&&!isNative&&(
         <div className="overlay" onClick={()=>setModal(null)}>
           <div className="glass up" style={{padding:24,maxWidth:660,width:"100%",maxHeight:"92vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
             <div style={{textAlign:"center",marginBottom:14}}>

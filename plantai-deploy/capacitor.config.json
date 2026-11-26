@@ -1,0 +1,16 @@
+{
+  "appId": "mn.plantai.app",
+  "appName": "PlantAI",
+  "webDir": "dist",
+  "backgroundColor": "#060d06",
+  "android": {
+    "backgroundColor": "#060d06"
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover",
+      "style": "DARK"
+    }
+  }
+}

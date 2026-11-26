@@ -111,9 +111,30 @@ export function clearCookie(name) {
   return name + "=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0";
 }
 
-/* req (Node/Vercel) header-аас session cookie-г шалгаад и-мэйл буцаана */
+/* Гар утасны апп cookie биш "Authorization: Bearer <JWT>" header илгээдэг
+   (апп өөр origin-оос дууддаг тул cookie найдвартай ажиллахгүй). */
+export function bearerToken(req) {
+  const h = req.headers?.authorization || "";
+  return h.startsWith("Bearer ") ? h.slice(7).trim() : null;
+}
+
+/* Апп-аас ирсэн хүсэлт эсэх — login/register токеныг JSON-оор буцаах эсэхийг шийднэ */
+export function isAppClient(req) {
+  return req.headers?.["x-plantai-client"] === "app";
+}
+
+/* CORS — веб (cookie) болон апп (Bearer) хоёуланд */
+export function setCors(req, res, methods) {
+  res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Methods", methods + ", OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-PlantAI-Client");
+  res.setHeader("Vary", "Origin");
+}
+
+/* req (Node/Vercel)-ээс Bearer токен эсвэл session cookie-г шалгаад и-мэйл буцаана */
 export async function getSessionEmail(req, secret, cookieName = "pa_session") {
-  const cookies = parseCookies(req.headers?.cookie);
-  const payload = await verifyJWT(cookies[cookieName], secret);
+  const token = bearerToken(req) || parseCookies(req.headers?.cookie)[cookieName];
+  const payload = await verifyJWT(token, secret);
   return payload?.email || null;
 }
