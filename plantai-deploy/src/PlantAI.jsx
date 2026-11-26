@@ -394,6 +394,20 @@ export default function PlantAI(){
     setToken(null);setUser(null);setResult(null);setHist([]);setModal(null);
   };
 
+  /* /api/chat-ийн 401 (нэвтрэлт дууссан) эсвэл 429 (өдрийн хязгаар) — дахин
+     оролдох утгагүй. Хэрэглэгчид харуулах мессежийг буцаана, бусад үед null. */
+  const aiBlocked=async(resp)=>{
+    if(resp.status===401){
+      setToken(null);setUser(null);setModal("login");
+      return "Нэвтрэлтийн хугацаа дууссан байна. Дахин нэвтэрнэ үү.";
+    }
+    if(resp.status===429){
+      const j=await resp.clone().json().catch(()=>null);
+      if(j?.code==="daily_limit")return j.error||"Өнөөдрийн AI хүсэлтийн хязгаар дууслаа. Маргааш дахин оролдоно уу.";
+    }
+    return null;
+  };
+
   /* ═══ БҮРТГЭЛ УСТГАХ — Google Play-ийн шаардлага (апп дотор + вэбээр) ═══ */
   const [delPw,setDelPw]=useState("");
   const [delErr,setDelErr]=useState("");
@@ -477,6 +491,8 @@ export default function PlantAI(){
     try{
       const msgs=next.slice(-12).map(m=>({role:m.role,content:m.text}));
       const resp=await api("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:1500,thinking:{type:"disabled"},system:sys,messages:msgs})});
+      const blocked=await aiBlocked(resp);
+      if(blocked){setChat(c=>[...c,{role:"assistant",text:blocked}]);setChatLoading(false);return;}
       if(!resp.ok){setChat(c=>[...c,{role:"assistant",text:"Сервер алдаа ("+resp.status+"). Дахин оролдоно уу."}]);setChatLoading(false);return;}
       const data=await resp.json();
       if(data.error){setChat(c=>[...c,{role:"assistant",text:"Алдаа: "+(data.error.message||"дахин оролдоно уу")}]);setChatLoading(false);return;}
@@ -515,6 +531,8 @@ export default function PlantAI(){
       try{
         const extra=attempt>1?"\nЗӨВХӨН JSON. Markdown бичихгүй!":"";
         const resp=await api("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:3000,thinking:{type:"disabled"},system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
+        const blocked=await aiBlocked(resp);
+        if(blocked){fallback=blocked;break;}
         if(!resp.ok){fallback="Сервер алдаа: "+resp.status;continue;}
         const data=await resp.json();
         if(data.error){fallback=data.error.message||"API алдаа";continue;}
@@ -570,6 +588,8 @@ export default function PlantAI(){
       try{
         const extra=attempt>1?"\nЗӨВХӨН JSON. Markdown бичихгүй!":"";
         const resp=await api("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:3000,thinking:{type:"disabled"},system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
+        const blocked=await aiBlocked(resp);
+        if(blocked){fallback=blocked;break;}
         if(!resp.ok){fallback="Сервер алдаа: "+resp.status;continue;}
         const data=await resp.json();
         if(data.error){fallback=data.error.message||"API алдаа";continue;}
@@ -618,6 +638,8 @@ export default function PlantAI(){
       try{
         const extra=attempt>1?"\nЗӨВХӨН JSON. Markdown бичихгүй!":"";
         const resp=await api("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-5",max_tokens:3000,thinking:{type:"disabled"},system:sysMsg,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mt,data:imgData}},{type:"text",text:userMsg+extra}]}]})});
+        const blocked=await aiBlocked(resp);
+        if(blocked){fallback=blocked;break;}
         if(!resp.ok){fallback="Сервер алдаа: "+resp.status;continue;}
         const data=await resp.json();
         if(data.error){fallback=data.error.message||"API алдаа";continue;}
@@ -798,6 +820,8 @@ JSON БҮТЭЦ:
             ]}]
           }),
         });
+        const blocked=await aiBlocked(resp);
+        if(blocked){fallback=blocked;break;}
         if(!resp.ok){
           const errText=await resp.text().catch(()=>"");
           fallback="Сервер алдаа ("+resp.status+"): "+(errText.slice(0,100)||"Дахин оролдоно уу");
